@@ -15,7 +15,18 @@
       "PowerShell($url = 'https://unpkg.com/@quick-start/create-electron@1.0.30/index.js'; $src = \\(Invoke-WebRequest $url -UseBasicParsing\\).Content; $src.Substring\\(0, [Math]::Min\\(8000, $src.Length\\)\\))",
       "PowerShell(cmd /c \"npm create @quick-start/electron@latest scaffold -- --template react --skip\")",
       "PowerShell(Test-Path .\\\\.claude; Test-Path ..\\\\.claude_backup; Write-Output \"---\"; \\(Get-ChildItem .\\\\.claude -Force | Measure-Object\\).Count; \\(Get-ChildItem ..\\\\.claude_backup -Force | Measure-Object\\).Count)",
-      "PowerShell(Resolve-Path *)"
+      "PowerShell(Resolve-Path *)",
+      "Bash(node *)",
+      "Bash(cmd *)",
+      "PowerShell($cmd = '\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\18\\\\BuildTools\\\\VC\\\\Auxiliary\\\\Build\\\\vcvars64.bat\" && npm install better-sqlite3 electron-log'; & cmd.exe /c $cmd 2>&1 | Out-String)",
+      "PowerShell($cmd = '\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\18\\\\BuildTools\\\\VC\\\\Auxiliary\\\\Build\\\\vcvars64.bat\" && npm run postinstall'; & cmd.exe /c $cmd 2>&1 | Out-String)",
+      "PowerShell($f = Get-Item \"node_modules\\\\better-sqlite3\\\\build\\\\Release\\\\better_sqlite3.node\"; Write-Output \"Length bytes: $\\($f.Length\\)\"; Write-Output \"LastWriteTime: $\\($f.LastWriteTime\\)\"; Write-Output \"Size MB: $\\([math]::Round\\($f.Length/1MB, 2\\)\\)\")",
+      "PowerShell($cmd = '\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\18\\\\BuildTools\\\\VC\\\\Auxiliary\\\\Build\\\\vcvars64.bat\" && npm run dev'; & cmd.exe /c $cmd 2>&1 | Out-String)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Get-CimInstance *)",
+      "PowerShell($cmd = '\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\18\\\\BuildTools\\\\VC\\\\Auxiliary\\\\Build\\\\vcvars64.bat\" && npm run dev > \"C:\\\\Users\\\\soyli\\\\Downloads\\\\gestion-contable\\\\devlog.txt\" 2>&1'; Start-Process -FilePath cmd.exe -ArgumentList \"/c\", $cmd -PassThru -WindowStyle Hidden | Select-Object Id, StartTime)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(Remove-Item *)"
     ]
   }
 }
