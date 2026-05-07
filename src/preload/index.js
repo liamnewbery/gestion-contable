@@ -1,8 +1,16 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
-const api = {}
+const api = {
+  grupos: {
+    list: () => ipcRenderer.invoke('grupos:list'),
+    listInactivos: () => ipcRenderer.invoke('grupos:list-inactivos'),
+    create: (data) => ipcRenderer.invoke('grupos:create', data),
+    update: (data) => ipcRenderer.invoke('grupos:update', data),
+    deactivate: (id) => ipcRenderer.invoke('grupos:deactivate', { id })
+  }
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

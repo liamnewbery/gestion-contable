@@ -41,7 +41,9 @@ function createWindow() {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  await import('./database/db.js')
+  const { db } = await import('./database/db.js')
+  const { registerGruposHandlers } = await import('./ipc/grupos.js')
+  registerGruposHandlers(db)
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
