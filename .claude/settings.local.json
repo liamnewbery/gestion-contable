@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(node --version)",
+      "PowerShell(npm *)",
+      "PowerShell(cmd /c \"npm --version\")",
+      "PowerShell(Get-ExecutionPolicy *)",
+      "WebFetch(domain:electron-vite.org)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:unpkg.com)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "PowerShell($url = 'https://unpkg.com/@quick-start/create-electron@1.0.30/utils/useElectronUpdater.js'; \\(Invoke-WebRequest $url -UseBasicParsing\\).Content)",
+      "PowerShell($url = 'https://unpkg.com/@quick-start/create-electron@1.0.30/index.js'; $src = \\(Invoke-WebRequest $url -UseBasicParsing\\).Content; $src.Substring\\(0, [Math]::Min\\(8000, $src.Length\\)\\))",
+      "PowerShell(cmd /c \"npm create @quick-start/electron@latest scaffold -- --template react --skip\")",
+      "PowerShell(Test-Path .\\\\.claude; Test-Path ..\\\\.claude_backup; Write-Output \"---\"; \\(Get-ChildItem .\\\\.claude -Force | Measure-Object\\).Count; \\(Get-ChildItem ..\\\\.claude_backup -Force | Measure-Object\\).Count)",
+      "PowerShell(Resolve-Path *)"
+    ]
+  }
+}
