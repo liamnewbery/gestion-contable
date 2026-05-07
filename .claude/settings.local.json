@@ -26,7 +26,14 @@
       "PowerShell(Get-CimInstance *)",
       "PowerShell($cmd = '\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\18\\\\BuildTools\\\\VC\\\\Auxiliary\\\\Build\\\\vcvars64.bat\" && npm run dev > \"C:\\\\Users\\\\soyli\\\\Downloads\\\\gestion-contable\\\\devlog.txt\" 2>&1'; Start-Process -FilePath cmd.exe -ArgumentList \"/c\", $cmd -PassThru -WindowStyle Hidden | Select-Object Id, StartTime)",
       "PowerShell(Test-Path *)",
-      "PowerShell(Remove-Item *)"
+      "PowerShell(Remove-Item *)",
+      "PowerShell(npx shadcn@latest init -y --base-color neutral 2>&1 | Out-String)",
+      "PowerShell(npx shadcn@latest init --help 2>&1 | Out-String)",
+      "PowerShell(npx shadcn@latest init -b radix -f 2>&1 | Out-String)",
+      "PowerShell(New-Item *)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:5173/src/App.jsx\" -UseBasicParsing -TimeoutSec 5; Write-Output \"Status: $\\($r.StatusCode\\)\"; Write-Output \"Length: $\\($r.Content.Length\\) bytes\"; if \\($r.Content -match 'Button'\\) { Write-Output \"Contains 'Button': YES\" } else { Write-Output \"Contains 'Button': NO\" } } catch { Write-Output \"Error: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:5173/src/components/ui/button.jsx\" -UseBasicParsing -TimeoutSec 5; Write-Output \"button.jsx status: $\\($r.StatusCode\\), $\\($r.Content.Length\\) bytes\" } catch { Write-Output \"button.jsx error: $\\($_.Exception.Message\\)\" }; try { $r = Invoke-WebRequest -Uri \"http://localhost:5173/src/assets/main.css\" -UseBasicParsing -TimeoutSec 5; Write-Output \"main.css status: $\\($r.StatusCode\\), $\\($r.Content.Length\\) bytes\"; if \\($r.Content -match 'tailwindcss'\\) { Write-Output \"main.css refs tailwindcss: YES\" } } catch { Write-Output \"main.css error: $\\($_.Exception.Message\\)\" })",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://localhost:5173/src/App.jsx\" -UseBasicParsing -TimeoutSec 5; if \\($r.Content -match 'Gesti'\\) { Write-Output \"Has 'Gesti': YES\" }; if \\($r.Content -match 'h-screen'\\) { Write-Output \"Has 'h-screen': YES\" }; if \\($r.Content -match 'text-5xl'\\) { Write-Output \"Has 'text-5xl': YES\" }; Write-Output \"---first 500 chars of transformed App.jsx---\"; $r.Content.Substring\\(0, [Math]::Min\\(500, $r.Content.Length\\)\\))"
     ]
   }
 }
