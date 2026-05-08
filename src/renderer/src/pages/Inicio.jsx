@@ -161,7 +161,13 @@ function Inicio() {
               ) : (
                 <ul className="divide-y">
                   {resumen.pacientes.pendientes.map((p) => (
-                    <SimpleRow key={p.paciente_id} nombre={fullName(p)} monto={p.monto_mes} />
+                    <SimpleRow
+                      key={p.paciente_id}
+                      nombre={fullName(p)}
+                      monto={p.monto_mes}
+                      monto_cobrado={p.monto_cobrado}
+                      saldo={p.saldo}
+                    />
                   ))}
                 </ul>
               )}
@@ -199,6 +205,8 @@ function Inicio() {
                       key={p.alumno_particular_id}
                       nombre={fullName(p)}
                       monto={p.monto_mes}
+                      monto_cobrado={p.monto_cobrado}
+                      saldo={p.saldo}
                     />
                   ))}
                 </ul>
@@ -271,10 +279,18 @@ function PagoButton() {
   )
 }
 
-function SimpleRow({ nombre, monto }) {
+function SimpleRow({ nombre, monto, monto_cobrado, saldo }) {
+  const showParcial = monto_cobrado > 0
   return (
     <li className="flex items-center justify-between gap-4 px-4 py-3">
-      <div className="min-w-0 flex-1 font-medium">{nombre}</div>
+      <div className="min-w-0 flex-1">
+        <div className="font-medium">{nombre}</div>
+        {showParcial && (
+          <div className="text-xs text-muted-foreground">
+            pagó {formatPesos(monto_cobrado)} · debe {formatPesos(saldo)}
+          </div>
+        )}
+      </div>
       <div className="text-sm font-semibold">{formatPesos(monto)}</div>
       <PagoButton />
     </li>
@@ -283,10 +299,18 @@ function SimpleRow({ nombre, monto }) {
 
 function AlumnoGrupalRow({ alumno }) {
   const total = alumno.grupos.reduce((s, g) => s + g.monto_mes, 0)
+  const showParcial = alumno.monto_cobrado > 0
   return (
     <li className="px-4 py-3">
       <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0 flex-1 font-medium">{fullName(alumno)}</div>
+        <div className="min-w-0 flex-1">
+          <div className="font-medium">{fullName(alumno)}</div>
+          {showParcial && (
+            <div className="text-xs text-muted-foreground">
+              pagó {formatPesos(alumno.monto_cobrado)} · debe {formatPesos(alumno.saldo)}
+            </div>
+          )}
+        </div>
         <div className="text-sm font-semibold">{formatPesos(total)}</div>
         <PagoButton />
       </div>

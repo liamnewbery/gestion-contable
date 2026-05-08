@@ -58,7 +58,8 @@
       "PowerShell(npx eslint --no-cache --fix src/main/ipc/mail.js src/main/ipc/configuracion.js src/main/index.js src/preload/index.js 2>&1 | Out-String)",
       "PowerShell(npx eslint --no-cache src/main/ipc/pagos.js src/preload/index.js src/main/index.js src/renderer/src/pages/Pagos.jsx 2>&1 | Out-String)",
       "PowerShell(npx eslint --no-cache --fix src/main/ipc/pagos.js src/preload/index.js src/main/index.js src/renderer/src/pages/Pagos.jsx 2>&1 | Out-String)",
-      "PowerShell(npx eslint --no-cache src/renderer/src/pages/Pagos.jsx 2>&1 | Select-String \"warning|error\" | Group-Object { \\($_ -split \"  \"\\)[-1].Trim\\(\\) } | Format-Table Count, Name -AutoSize)"
+      "PowerShell(npx eslint --no-cache src/renderer/src/pages/Pagos.jsx 2>&1 | Select-String \"warning|error\" | Group-Object { \\($_ -split \"  \"\\)[-1].Trim\\(\\) } | Format-Table Count, Name -AutoSize)",
+      "Bash(npx eslint *)"
     ]
   }
 }

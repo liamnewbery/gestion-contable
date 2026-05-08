@@ -116,10 +116,12 @@ export function registerDashboardHandlers(db) {
       }
       const pacientesPendientes = []
       let pacientesMontoEsperado = 0
+      let pacientesPagaronCount = 0
       for (const r of pacientesRows) {
         const monto_mes = montoMes(r.precio_base, r.frecuencia_pago, lunes)
         pacientesMontoEsperado += monto_mes
-        if (!pacientesPagaron.has(r.paciente_id)) {
+        const cobrado = pacientesPagaron.get(r.paciente_id) ?? 0
+        if (monto_mes > 0 && cobrado < monto_mes) {
           pacientesPendientes.push({
             paciente_id: r.paciente_id,
             persona_id: r.persona_id,
@@ -127,8 +129,12 @@ export function registerDashboardHandlers(db) {
             apellido: r.apellido,
             precio_base: r.precio_base,
             frecuencia_pago: r.frecuencia_pago,
-            monto_mes
+            monto_mes,
+            monto_cobrado: cobrado,
+            saldo: monto_mes - cobrado
           })
+        } else {
+          pacientesPagaronCount++
         }
       }
 
@@ -161,11 +167,19 @@ export function registerDashboardHandlers(db) {
       }
       const alumnosPendientes = []
       let alumnosMontoEsperado = 0
+      let alumnosPagaronCount = 0
       for (const a of alumnosMap.values()) {
         const total = a.grupos.reduce((s, g) => s + g.monto_mes, 0)
         alumnosMontoEsperado += total
-        if (!alumnosPagaron.has(a.alumno_id)) {
-          alumnosPendientes.push(a)
+        const cobrado = alumnosPagaron.get(a.alumno_id) ?? 0
+        if (total > 0 && cobrado < total) {
+          alumnosPendientes.push({
+            ...a,
+            monto_cobrado: cobrado,
+            saldo: total - cobrado
+          })
+        } else {
+          alumnosPagaronCount++
         }
       }
 
@@ -181,10 +195,12 @@ export function registerDashboardHandlers(db) {
       }
       const alumnosParticularesPendientes = []
       let alumnosParticularesMontoEsperado = 0
+      let alumnosParticularesPagaronCount = 0
       for (const r of alumnosParticularesRows) {
         const monto_mes = montoMes(r.precio_base, r.frecuencia_pago, lunes)
         alumnosParticularesMontoEsperado += monto_mes
-        if (!alumnosParticularesPagaron.has(r.alumno_particular_id)) {
+        const cobrado = alumnosParticularesPagaron.get(r.alumno_particular_id) ?? 0
+        if (monto_mes > 0 && cobrado < monto_mes) {
           alumnosParticularesPendientes.push({
             alumno_particular_id: r.alumno_particular_id,
             persona_id: r.persona_id,
@@ -192,8 +208,12 @@ export function registerDashboardHandlers(db) {
             apellido: r.apellido,
             precio_base: r.precio_base,
             frecuencia_pago: r.frecuencia_pago,
-            monto_mes
+            monto_mes,
+            monto_cobrado: cobrado,
+            saldo: monto_mes - cobrado
           })
+        } else {
+          alumnosParticularesPagaronCount++
         }
       }
 
@@ -204,21 +224,21 @@ export function registerDashboardHandlers(db) {
         data: {
           pacientes: {
             total: pacientesRows.length,
-            pagaron: pacientesPagaron.size,
+            pagaron: pacientesPagaronCount,
             monto_cobrado: sumValues(pacientesPagaron),
             monto_esperado: pacientesMontoEsperado,
             pendientes: pacientesPendientes
           },
           alumnos_grupales: {
             total: alumnosMap.size,
-            pagaron: alumnosPagaron.size,
+            pagaron: alumnosPagaronCount,
             monto_cobrado: sumValues(alumnosPagaron),
             monto_esperado: alumnosMontoEsperado,
             pendientes: alumnosPendientes
           },
           alumnos_particulares: {
             total: alumnosParticularesRows.length,
-            pagaron: alumnosParticularesPagaron.size,
+            pagaron: alumnosParticularesPagaronCount,
             monto_cobrado: sumValues(alumnosParticularesPagaron),
             monto_esperado: alumnosParticularesMontoEsperado,
             pendientes: alumnosParticularesPendientes
