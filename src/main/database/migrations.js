@@ -219,6 +219,19 @@ const MIGRATIONS = [
         DROP TABLE pagos_old;
       `)
     }
+  },
+  {
+    version: 5,
+    description: 'agregar numero_comprobante y fecha_hora_transferencia a pagos',
+    up: (db) => {
+      db.exec(`
+        ALTER TABLE pagos ADD COLUMN numero_comprobante TEXT;
+        ALTER TABLE pagos ADD COLUMN fecha_hora_transferencia TEXT;
+        CREATE INDEX IF NOT EXISTS idx_pagos_dedup_comprobante
+          ON pagos(numero_comprobante, fecha_hora_transferencia)
+          WHERE numero_comprobante IS NOT NULL AND fecha_hora_transferencia IS NOT NULL;
+      `)
+    }
   }
 ]
 

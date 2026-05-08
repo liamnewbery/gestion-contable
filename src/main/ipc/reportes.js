@@ -4,6 +4,7 @@ import path from 'path'
 import nodemailer from 'nodemailer'
 import pdfmake from 'pdfmake'
 import vfsFonts from 'pdfmake/build/vfs_fonts'
+import log from 'electron-log'
 import { decryptIfSensitive } from './configuracion.js'
 
 const MESES = [
@@ -280,14 +281,33 @@ export function registerReportesHandlers(db) {
 
   function consultarPagos(params) {
     const incluirEfectivo = params.incluirEfectivo === true
+    log.info(
+      `[reportes] consultarPagos params.incluirEfectivo=${JSON.stringify(params.incluirEfectivo)} (typeof=${typeof params.incluirEfectivo}) → resolved=${incluirEfectivo}`
+    )
+    let stmt, stmtName, rows
     if (params.modo === 'mensual') {
       const anio = Number(params.anio)
       const mes = Number(params.mes)
-      const stmt = incluirEfectivo ? listMensualConEfectivoStmt : listMensualStmt
-      return stmt.all(anio, mes, anio, mes)
+      if (incluirEfectivo) {
+        stmt = listMensualConEfectivoStmt
+        stmtName = 'listMensualConEfectivoStmt'
+      } else {
+        stmt = listMensualStmt
+        stmtName = 'listMensualStmt'
+      }
+      rows = stmt.all(anio, mes, anio, mes)
+    } else {
+      if (incluirEfectivo) {
+        stmt = listRangoConEfectivoStmt
+        stmtName = 'listRangoConEfectivoStmt'
+      } else {
+        stmt = listRangoStmt
+        stmtName = 'listRangoStmt'
+      }
+      rows = stmt.all(params.desde, params.hasta)
     }
-    const stmt = incluirEfectivo ? listRangoConEfectivoStmt : listRangoStmt
-    return stmt.all(params.desde, params.hasta)
+    log.info(`[reportes] stmt=${stmtName} rows=${rows.length}`)
+    return rows
   }
 
   async function generarPdfBuffer(params) {

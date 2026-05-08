@@ -62,7 +62,8 @@
       "Bash(npx eslint *)",
       "Bash(npm run *)",
       "PowerShell(Get-ChildItem *)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

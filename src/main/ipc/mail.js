@@ -114,6 +114,10 @@ Del comprobante extraé:
 - monto: solo el número (sin símbolos ni puntos de miles)
 - fecha: en formato YYYY-MM-DD
 - medio_pago: "transferencia" / "mercadopago" / "otro"
+- numero_comprobante: número o código identificador del comprobante (ej: "Nº de operación", "ID de transferencia", "Comprobante", "Coelsa ID"). null si no aparece. No inventar.
+- fecha_hora_transferencia: fecha y hora exactas de la operación en formato YYYY-MM-DD HH:MM (24h). null si solo aparece la fecha sin hora o si no aparece. No inventar.
+
+Estos dos últimos campos se usan para detectar comprobantes duplicados — ante cualquier duda, devolvé null.
 
 Si no podés identificar algún campo con certeza, usá null. Si el documento no parece un comprobante de pago válido, devolvé confianza_extraccion: 0.
 
@@ -168,6 +172,8 @@ Respondé ÚNICAMENTE con este JSON, sin texto adicional, sin bloques de código
   "monto": número (sin símbolos ni puntos de miles),
   "fecha": "YYYY-MM-DD",
   "medio_pago": "transferencia / mercadopago / otro",
+  "numero_comprobante": "string o null",
+  "fecha_hora_transferencia": "YYYY-MM-DD HH:MM o null",
   "confianza_extraccion": número entre 0 y 1,
   "persona_id": número o null,
   "rol_tipo": "paciente" / "alumno" / "alumno_particular" o null,
@@ -335,12 +341,31 @@ export async function revisarMails(db) {
     const uids = Array.from(new Set((uidsRaw || []).map(Number))).sort((a, b) => a - b)
 
     const checkUidStmt = db.prepare('SELECT 1 FROM pagos WHERE mail_uid = ?')
+    const checkComprobanteDupStmt = db.prepare(`
+      SELECT id FROM pagos
+      WHERE numero_comprobante = ? AND fecha_hora_transferencia = ?
+      LIMIT 1
+    `)
+    const checkDupNumeroStmt = db.prepare(`
+      SELECT id FROM pagos WHERE numero_comprobante = ? LIMIT 1
+    `)
+    const checkDupFechaPersonaStmt = db.prepare(`
+      SELECT id FROM pagos
+      WHERE fecha_hora_transferencia = ? AND persona_id = ?
+      LIMIT 1
+    `)
+    const checkDupFechaMailStmt = db.prepare(`
+      SELECT id FROM pagos
+      WHERE fecha_hora_transferencia = ? AND LOWER(mail_from) = LOWER(?)
+      LIMIT 1
+    `)
     const insertPagoStmt = db.prepare(`
       INSERT INTO pagos (
         persona_id, rol_tipo, rol_id, monto, fecha_pago, periodo_cubierto,
         origen, mail_uid, confianza_ia, estado,
-        archivo_path, mail_from, mail_subject, mail_date
-      ) VALUES (?, ?, ?, ?, ?, ?, 'ia', ?, ?, ?, ?, ?, ?, ?)
+        archivo_path, mail_from, mail_subject, mail_date,
+        numero_comprobante, fecha_hora_transferencia
+      ) VALUES (?, ?, ?, ?, ?, ?, 'ia', ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     const candidatosStmts = {
@@ -392,7 +417,7 @@ export async function revisarMails(db) {
         if (!msg) continue
 
         const env = msg.envelope || {}
-        const mail_from = env.from?.[0]?.address || null
+        const mail_from = env.from?.[0]?.address?.toLowerCase() || null
         const mail_subject = env.subject || null
         const mail_date = env.date ? new Date(env.date).toISOString() : null
 
@@ -527,6 +552,29 @@ export async function revisarMails(db) {
         }
         const periodo_cubierto = fecha_pago.slice(0, 7)
 
+        const numero_comprobante = parsed.numero_comprobante ?? null
+        const fecha_hora_transferencia = parsed.fecha_hora_transferencia ?? null
+
+        let dup = null
+        if (numero_comprobante && fecha_hora_transferencia) {
+          dup = checkComprobanteDupStmt.get(numero_comprobante, fecha_hora_transferencia)
+        } else if (numero_comprobante) {
+          dup = checkDupNumeroStmt.get(numero_comprobante)
+        } else if (fecha_hora_transferencia) {
+          if (persona_id != null) {
+            dup = checkDupFechaPersonaStmt.get(fecha_hora_transferencia, persona_id)
+          } else if (mail_from) {
+            dup = checkDupFechaMailStmt.get(fecha_hora_transferencia, mail_from)
+          }
+        }
+        if (dup) {
+          errores.push({
+            uid: uidStr,
+            mensaje: `Comprobante duplicado de pago #${dup.id}`
+          })
+          continue
+        }
+
         insertPagoStmt.run(
           persona_id,
           rol_tipo,
@@ -540,7 +588,9 @@ export async function revisarMails(db) {
           archivo_path,
           mail_from,
           mail_subject,
-          mail_date
+          mail_date,
+          numero_comprobante,
+          fecha_hora_transferencia
         )
 
         procesados++
