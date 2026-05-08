@@ -199,6 +199,38 @@ function Badge({ children, variantClass }) {
   )
 }
 
+function ConfirmModal({
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  confirmLabel = 'Confirmar',
+  destructive = false
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-md space-y-4 rounded-lg border bg-background p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button variant={destructive ? 'destructive' : 'default'} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Pagos() {
   const now = useMemo(() => new Date(), [])
   const currentYear = now.getFullYear()
@@ -493,6 +525,7 @@ function Pagos() {
 }
 
 function PagoRow({ pago, periodoActual, onAbrir, onCambiarEstado, onResolver }) {
+  const [confirmingRechazo, setConfirmingRechazo] = useState(false)
   const sinAsignar = pago.persona_id == null
   const tipoLabel = pago.rol_tipo ? TIPO_DISPLAY[pago.rol_tipo] : '—'
   const periodoDistinto =
@@ -540,11 +573,7 @@ function PagoRow({ pago, periodoActual, onAbrir, onCambiarEstado, onResolver }) 
             </Button>
           )}
           {pago.estado === 'confirmado' && (
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => onCambiarEstado(pago, 'rechazado')}
-            >
+            <Button size="sm" variant="destructive" onClick={() => setConfirmingRechazo(true)}>
               Rechazar
             </Button>
           )}
@@ -552,6 +581,19 @@ function PagoRow({ pago, periodoActual, onAbrir, onCambiarEstado, onResolver }) 
             <Button size="sm" onClick={() => onCambiarEstado(pago, 'confirmado')}>
               Confirmar
             </Button>
+          )}
+          {confirmingRechazo && (
+            <ConfirmModal
+              title="Rechazar pago"
+              message={`¿Seguro que querés rechazar el pago de ${formatMonto(pago.monto)} de ${pago.persona_nombre} ${pago.persona_apellido}? Va a salir de la contabilidad.`}
+              confirmLabel="Rechazar"
+              destructive
+              onConfirm={() => {
+                setConfirmingRechazo(false)
+                onCambiarEstado(pago, 'rechazado')
+              }}
+              onCancel={() => setConfirmingRechazo(false)}
+            />
           )}
         </div>
       </td>
@@ -573,6 +615,7 @@ function ResolverModal({
   const [rolTipo, setRolTipo] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [confirmingRechazo, setConfirmingRechazo] = useState(false)
 
   const personaSeleccionada = personas?.find((p) => p.persona_id === Number(personaId))
   const roles = rolesDisponibles(personaSeleccionada)
@@ -710,7 +753,11 @@ function ResolverModal({
       )}
 
       <div className="flex justify-between gap-2 pt-2">
-        <Button variant="destructive" onClick={handleRechazar} disabled={submitting}>
+        <Button
+          variant="destructive"
+          onClick={() => setConfirmingRechazo(true)}
+          disabled={submitting}
+        >
           Rechazar pago
         </Button>
         <div className="flex gap-2">
@@ -725,6 +772,20 @@ function ResolverModal({
           </Button>
         </div>
       </div>
+
+      {confirmingRechazo && (
+        <ConfirmModal
+          title="Rechazar pago"
+          message={`¿Seguro que querés rechazar este pago de ${formatMonto(pago.monto)}? No va a quedar registrado en la contabilidad.`}
+          confirmLabel="Rechazar"
+          destructive
+          onConfirm={() => {
+            setConfirmingRechazo(false)
+            handleRechazar()
+          }}
+          onCancel={() => setConfirmingRechazo(false)}
+        />
+      )}
     </div>
   )
 }

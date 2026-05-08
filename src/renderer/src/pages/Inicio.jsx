@@ -47,6 +47,7 @@ function Inicio() {
 
   const isCurrentYear = anio === currentYear
   const maxMes = isCurrentYear ? currentMonth : 12
+  const periodoActual = `${anio}-${String(mes).padStart(2, '0')}`
 
   const yearOptions = useMemo(() => {
     const arr = []
@@ -194,6 +195,11 @@ function Inicio() {
                       monto={p.monto_mes}
                       monto_cobrado={p.monto_cobrado}
                       saldo={p.saldo}
+                      persona_id={p.persona_id}
+                      rol_tipo="paciente"
+                      rol_id={p.paciente_id}
+                      periodo_cubierto={periodoActual}
+                      onSuccess={loadResumen}
                     />
                   ))}
                 </ul>
@@ -211,7 +217,12 @@ function Inicio() {
               ) : (
                 <ul className="divide-y">
                   {resumen.alumnos_grupales.pendientes.map((a) => (
-                    <AlumnoGrupalRow key={a.alumno_id} alumno={a} />
+                    <AlumnoGrupalRow
+                      key={a.alumno_id}
+                      alumno={a}
+                      periodo_cubierto={periodoActual}
+                      onSuccess={loadResumen}
+                    />
                   ))}
                 </ul>
               )}
@@ -234,6 +245,11 @@ function Inicio() {
                       monto={p.monto_mes}
                       monto_cobrado={p.monto_cobrado}
                       saldo={p.saldo}
+                      persona_id={p.persona_id}
+                      rol_tipo="alumno_particular"
+                      rol_id={p.alumno_particular_id}
+                      periodo_cubierto={periodoActual}
+                      onSuccess={loadResumen}
                     />
                   ))}
                 </ul>
@@ -296,17 +312,154 @@ function EmptyRow({ text }) {
   return <p className="px-4 py-3 text-sm text-muted-foreground">{text}</p>
 }
 
-function PagoButton() {
+function PagoButton({ persona_id, rol_tipo, rol_id, periodo_cubierto, nombre, onSuccess }) {
+  const [open, setOpen] = useState(false)
   return (
-    <span title="Próximamente" className="inline-block">
-      <Button size="sm" variant="outline" disabled>
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
         Registrar pago en efectivo
       </Button>
-    </span>
+      {open && (
+        <EfectivoRapidoModal
+          persona_id={persona_id}
+          rol_tipo={rol_tipo}
+          rol_id={rol_id}
+          periodo_cubierto={periodo_cubierto}
+          nombre={nombre}
+          onClose={() => setOpen(false)}
+          onSuccess={() => {
+            setOpen(false)
+            onSuccess()
+          }}
+        />
+      )}
+    </>
   )
 }
 
-function SimpleRow({ nombre, monto, monto_cobrado, saldo }) {
+function EfectivoRapidoModal({
+  persona_id,
+  rol_tipo,
+  rol_id,
+  periodo_cubierto,
+  nombre,
+  onClose,
+  onSuccess
+}) {
+  const today = useMemo(() => {
+    const d = new Date()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${d.getFullYear()}-${m}-${day}`
+  }, [])
+
+  const [monto, setMonto] = useState('')
+  const [fecha, setFecha] = useState(today)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError(null)
+    const montoNum = Number(monto)
+    if (!Number.isFinite(montoNum) || montoNum <= 0) {
+      setError('El monto debe ser mayor a 0')
+      return
+    }
+    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      setError('Fecha inválida')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const res = await window.api.pagos.create({
+        persona_id,
+        rol_tipo,
+        rol_id,
+        monto: montoNum,
+        fecha_pago: fecha,
+        periodo_cubierto
+      })
+      if (!res.ok) {
+        setError(res.error.message)
+        setSubmitting(false)
+        return
+      }
+      onSuccess()
+    } catch (err) {
+      setError(err.message)
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-md max-h-[90vh] space-y-4 overflow-y-auto rounded-lg border bg-background p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-xl font-semibold">Registrar pago en efectivo</h2>
+        <p className="text-sm text-muted-foreground">{nombre}</p>
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">
+            Monto<span className="text-destructive"> *</span>
+          </span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            className={`${fieldClass} w-full`}
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+            autoFocus
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">
+            Fecha<span className="text-destructive"> *</span>
+          </span>
+          <input
+            type="date"
+            className={`${fieldClass} w-full`}
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+          />
+        </label>
+
+        {error && (
+          <div className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">{error}</div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? 'Guardando…' : 'Confirmar'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function SimpleRow({
+  nombre,
+  monto,
+  monto_cobrado,
+  saldo,
+  persona_id,
+  rol_tipo,
+  rol_id,
+  periodo_cubierto,
+  onSuccess
+}) {
   const showParcial = monto_cobrado > 0
   return (
     <li className="flex items-center justify-between gap-4 px-4 py-3">
@@ -319,12 +472,19 @@ function SimpleRow({ nombre, monto, monto_cobrado, saldo }) {
         )}
       </div>
       <div className="text-sm font-semibold">{formatPesos(monto)}</div>
-      <PagoButton />
+      <PagoButton
+        persona_id={persona_id}
+        rol_tipo={rol_tipo}
+        rol_id={rol_id}
+        periodo_cubierto={periodo_cubierto}
+        nombre={nombre}
+        onSuccess={onSuccess}
+      />
     </li>
   )
 }
 
-function AlumnoGrupalRow({ alumno }) {
+function AlumnoGrupalRow({ alumno, periodo_cubierto, onSuccess }) {
   const total = alumno.grupos.reduce((s, g) => s + g.monto_mes, 0)
   const showParcial = alumno.monto_cobrado > 0
   return (
@@ -339,7 +499,14 @@ function AlumnoGrupalRow({ alumno }) {
           )}
         </div>
         <div className="text-sm font-semibold">{formatPesos(total)}</div>
-        <PagoButton />
+        <PagoButton
+          persona_id={alumno.persona_id}
+          rol_tipo="alumno"
+          rol_id={alumno.alumno_id}
+          periodo_cubierto={periodo_cubierto}
+          nombre={fullName(alumno)}
+          onSuccess={onSuccess}
+        />
       </div>
       <ul className="mt-2 ml-4 space-y-1 text-xs text-muted-foreground">
         {alumno.grupos.map((g) => (
