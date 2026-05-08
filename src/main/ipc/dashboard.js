@@ -117,11 +117,14 @@ export function registerDashboardHandlers(db) {
       const pacientesPendientes = []
       let pacientesMontoEsperado = 0
       let pacientesPagaronCount = 0
+      let pacientesTotalCount = 0
       for (const r of pacientesRows) {
         const monto_mes = montoMes(r.precio_base, r.frecuencia_pago, lunes)
+        if (monto_mes === 0) continue
         pacientesMontoEsperado += monto_mes
+        pacientesTotalCount++
         const cobrado = pacientesPagaron.get(r.paciente_id) ?? 0
-        if (monto_mes > 0 && cobrado < monto_mes) {
+        if (cobrado < monto_mes) {
           pacientesPendientes.push({
             paciente_id: r.paciente_id,
             persona_id: r.persona_id,
@@ -168,11 +171,14 @@ export function registerDashboardHandlers(db) {
       const alumnosPendientes = []
       let alumnosMontoEsperado = 0
       let alumnosPagaronCount = 0
+      let alumnosTotalCount = 0
       for (const a of alumnosMap.values()) {
         const total = a.grupos.reduce((s, g) => s + g.monto_mes, 0)
+        if (total === 0) continue
         alumnosMontoEsperado += total
+        alumnosTotalCount++
         const cobrado = alumnosPagaron.get(a.alumno_id) ?? 0
-        if (total > 0 && cobrado < total) {
+        if (cobrado < total) {
           alumnosPendientes.push({
             ...a,
             monto_cobrado: cobrado,
@@ -196,11 +202,14 @@ export function registerDashboardHandlers(db) {
       const alumnosParticularesPendientes = []
       let alumnosParticularesMontoEsperado = 0
       let alumnosParticularesPagaronCount = 0
+      let alumnosParticularesTotalCount = 0
       for (const r of alumnosParticularesRows) {
         const monto_mes = montoMes(r.precio_base, r.frecuencia_pago, lunes)
+        if (monto_mes === 0) continue
         alumnosParticularesMontoEsperado += monto_mes
+        alumnosParticularesTotalCount++
         const cobrado = alumnosParticularesPagaron.get(r.alumno_particular_id) ?? 0
-        if (monto_mes > 0 && cobrado < monto_mes) {
+        if (cobrado < monto_mes) {
           alumnosParticularesPendientes.push({
             alumno_particular_id: r.alumno_particular_id,
             persona_id: r.persona_id,
@@ -223,21 +232,21 @@ export function registerDashboardHandlers(db) {
         ok: true,
         data: {
           pacientes: {
-            total: pacientesRows.length,
+            total: pacientesTotalCount,
             pagaron: pacientesPagaronCount,
             monto_cobrado: sumValues(pacientesPagaron),
             monto_esperado: pacientesMontoEsperado,
             pendientes: pacientesPendientes
           },
           alumnos_grupales: {
-            total: alumnosMap.size,
+            total: alumnosTotalCount,
             pagaron: alumnosPagaronCount,
             monto_cobrado: sumValues(alumnosPagaron),
             monto_esperado: alumnosMontoEsperado,
             pendientes: alumnosPendientes
           },
           alumnos_particulares: {
-            total: alumnosParticularesRows.length,
+            total: alumnosParticularesTotalCount,
             pagaron: alumnosParticularesPagaronCount,
             monto_cobrado: sumValues(alumnosParticularesPagaron),
             monto_esperado: alumnosParticularesMontoEsperado,
