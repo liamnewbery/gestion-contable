@@ -49,11 +49,13 @@ app.whenReady().then(async () => {
     './ipc/alumnos_particulares.js'
   )
   const { registerDashboardHandlers } = await import('./ipc/dashboard.js')
+  const { registerConfiguracionHandlers } = await import('./ipc/configuracion.js')
   registerGruposHandlers(db)
   registerPacientesHandlers(db)
   registerAlumnosHandlers(db)
   registerAlumnosParticularesHandlers(db)
   registerDashboardHandlers(db)
+  registerConfiguracionHandlers(db)
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')

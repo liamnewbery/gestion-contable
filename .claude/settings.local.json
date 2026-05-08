@@ -52,7 +52,8 @@
       "PowerShell($base = \"http://localhost:5173\"; $r = Invoke-WebRequest -Uri \"$base/src/pages/Clientes.jsx\" -UseBasicParsing; foreach \\($n in @\\('grupo_tipo_clase','TIPO_CLASE_OPTIONS','TIPO_CLASE_DISPLAY','filteredGruposForAlumno','onTipoClaseChange','client.alumno.tipo_clase','formData.alumno.tipo_clase','Tipo de clase'\\)\\) { if \\($r.Content -match [regex]::Escape\\($n\\)\\) { Write-Output \\(\"{0,-32} : YES\" -f $n\\) } else { Write-Output \\(\"{0,-32} : NO\" -f $n\\) } })",
       "PowerShell($base = \"http://localhost:5173\"; $r = Invoke-WebRequest -Uri \"$base/src/pages/Clientes.jsx\" -UseBasicParsing; foreach \\($n in @\\('window.api.alumnos_particulares','esAlumnoParticular','alumnoParticularPayload','alumno_particular_id','wasAlumnoParticular','Alumno particular','Alumnos particulares','hasMultipleRoles','dos o m'\\)\\) { if \\($r.Content -match [regex]::Escape\\($n\\)\\) { Write-Output \\(\"{0,-40} : YES\" -f $n\\) } else { Write-Output \\(\"{0,-40} : NO\" -f $n\\) } })",
       "PowerShell(npx eslint src/renderer/src/pages/Inicio.jsx src/main/ipc/dashboard.js 2>&1 | Out-String)",
-      "PowerShell(npx eslint --fix src/renderer/src/pages/Inicio.jsx src/main/ipc/dashboard.js 2>&1 | Out-String)"
+      "PowerShell(npx eslint --fix src/renderer/src/pages/Inicio.jsx src/main/ipc/dashboard.js 2>&1 | Out-String)",
+      "PowerShell(npx eslint --no-cache src/main/ipc/configuracion.js src/renderer/src/pages/Configuracion.jsx 2>&1 | Out-String)"
     ]
   }
 }
