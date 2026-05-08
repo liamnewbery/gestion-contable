@@ -41,13 +41,13 @@ function Inicio() {
 
   const [expanded, setExpanded] = useState({
     pacientes: false,
-    alumnos_grupales: false,
-    alumnos_particulares: false
+    alumnos: false
   })
 
   const isCurrentYear = anio === currentYear
   const maxMes = isCurrentYear ? currentMonth : 12
   const periodoActual = `${anio}-${String(mes).padStart(2, '0')}`
+  const labelMes = `${MESES[mes - 1]} ${anio}`
 
   const yearOptions = useMemo(() => {
     const arr = []
@@ -81,7 +81,7 @@ function Inicio() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadResumen()
   }, [anio, mes])
 
@@ -171,15 +171,26 @@ function Inicio() {
             </div>
           )}
 
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <RoleCard title="Pacientes" data={resumen.pacientes} />
-            <RoleCard title="Alumnos grupales" data={resumen.alumnos_grupales} />
-            <RoleCard title="Alumnos particulares" data={resumen.alumnos_particulares} />
+            <RoleCard
+              title="Alumnos"
+              data={{
+                total: resumen.alumnos_grupales.total + resumen.alumnos_particulares.total,
+                pagaron: resumen.alumnos_grupales.pagaron + resumen.alumnos_particulares.pagaron,
+                monto_cobrado:
+                  resumen.alumnos_grupales.monto_cobrado +
+                  resumen.alumnos_particulares.monto_cobrado,
+                monto_esperado:
+                  resumen.alumnos_grupales.monto_esperado +
+                  resumen.alumnos_particulares.monto_esperado
+              }}
+            />
           </div>
 
           <div className="space-y-4">
             <PendientesSection
-              title="Pacientes pendientes"
+              title={`Pacientes que adeudan pagos de ${labelMes}`}
               count={resumen.pacientes.pendientes.length}
               expanded={expanded.pacientes}
               onToggle={() => toggle('pacientes')}
@@ -207,40 +218,30 @@ function Inicio() {
             </PendientesSection>
 
             <PendientesSection
-              title="Alumnos grupales pendientes"
-              count={resumen.alumnos_grupales.pendientes.length}
-              expanded={expanded.alumnos_grupales}
-              onToggle={() => toggle('alumnos_grupales')}
+              title={`Alumnos que adeudan pagos de ${labelMes}`}
+              count={
+                resumen.alumnos_grupales.pendientes.length +
+                resumen.alumnos_particulares.pendientes.length
+              }
+              expanded={expanded.alumnos}
+              onToggle={() => toggle('alumnos')}
             >
-              {resumen.alumnos_grupales.pendientes.length === 0 ? (
-                <EmptyRow text="No hay alumnos grupales pendientes este mes." />
+              {resumen.alumnos_grupales.pendientes.length === 0 &&
+              resumen.alumnos_particulares.pendientes.length === 0 ? (
+                <EmptyRow text="No hay alumnos pendientes este mes." />
               ) : (
                 <ul className="divide-y">
                   {resumen.alumnos_grupales.pendientes.map((a) => (
                     <AlumnoGrupalRow
-                      key={a.alumno_id}
+                      key={`grupal-${a.alumno_id}`}
                       alumno={a}
                       periodo_cubierto={periodoActual}
                       onSuccess={loadResumen}
                     />
                   ))}
-                </ul>
-              )}
-            </PendientesSection>
-
-            <PendientesSection
-              title="Alumnos particulares pendientes"
-              count={resumen.alumnos_particulares.pendientes.length}
-              expanded={expanded.alumnos_particulares}
-              onToggle={() => toggle('alumnos_particulares')}
-            >
-              {resumen.alumnos_particulares.pendientes.length === 0 ? (
-                <EmptyRow text="No hay alumnos particulares pendientes este mes." />
-              ) : (
-                <ul className="divide-y">
                   {resumen.alumnos_particulares.pendientes.map((p) => (
                     <SimpleRow
-                      key={p.alumno_particular_id}
+                      key={`particular-${p.alumno_particular_id}`}
                       nombre={fullName(p)}
                       monto={p.monto_mes}
                       monto_cobrado={p.monto_cobrado}

@@ -1,6 +1,7 @@
 import { ipcMain, safeStorage } from 'electron'
 import { ImapFlow } from 'imapflow'
 import nodemailer from 'nodemailer'
+import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 
 export const SENSITIVE_KEYS = new Set(['imap_pass', 'smtp_pass', 'anthropic_api_key'])
 
@@ -14,8 +15,32 @@ const ALL_KEYS = [
   'smtp_port',
   'smtp_user',
   'smtp_pass',
-  'anthropic_api_key'
+  'anthropic_api_key',
+  'app_password'
 ]
+
+const SCRYPT_KEYLEN = 64
+
+function hashPassword(password) {
+  const salt = randomBytes(16)
+  const hash = scryptSync(password, salt, SCRYPT_KEYLEN)
+  return `${salt.toString('hex')}:${hash.toString('hex')}`
+}
+
+function verifyPassword(password, stored) {
+  const [saltHex, hashHex] = stored.split(':')
+  if (!saltHex || !hashHex) return false
+  const salt = Buffer.from(saltHex, 'hex')
+  const expected = Buffer.from(hashHex, 'hex')
+  if (expected.length === 0) return false
+  let computed
+  try {
+    computed = scryptSync(password ?? '', salt, expected.length)
+  } catch {
+    return false
+  }
+  return computed.length === expected.length && timingSafeEqual(computed, expected)
+}
 
 function encryptIfSensitive(clave, valor) {
   if (!SENSITIVE_KEYS.has(clave)) return valor
@@ -159,6 +184,52 @@ export function registerConfiguracionHandlers(db) {
         ok: false,
         error: { code: 'ANTHROPIC_CONNECTION_FAILED', message: err.message }
       }
+    }
+  })
+}
+
+export function registerAuthHandlers(db) {
+  const getStmt = db.prepare("SELECT valor FROM configuracion WHERE clave = 'app_password'")
+  const upsertStmt = db.prepare(
+    "INSERT OR REPLACE INTO configuracion (clave, valor) VALUES ('app_password', ?)"
+  )
+  const deleteStmt = db.prepare("DELETE FROM configuracion WHERE clave = 'app_password'")
+
+  ipcMain.handle('auth:verify', (_e, { password } = {}) => {
+    try {
+      const row = getStmt.get()
+      const stored = row?.valor
+      if (!stored) {
+        return { ok: true, data: { authenticated: true, hasPassword: false } }
+      }
+      const matches = verifyPassword(password ?? '', stored)
+      return { ok: true, data: { authenticated: matches, hasPassword: true } }
+    } catch (err) {
+      return { ok: false, error: { code: 'VERIFY_FAILED', message: err.message } }
+    }
+  })
+
+  ipcMain.handle('auth:set-password', (_e, { actual, nueva } = {}) => {
+    try {
+      const row = getStmt.get()
+      const stored = row?.valor
+      if (stored) {
+        if (!verifyPassword(actual ?? '', stored)) {
+          return {
+            ok: false,
+            error: { code: 'WRONG_PASSWORD', message: 'Contraseña actual incorrecta' }
+          }
+        }
+      }
+      const next = (nueva ?? '').toString()
+      if (next === '') {
+        deleteStmt.run()
+        return { ok: true, data: { hasPassword: false } }
+      }
+      upsertStmt.run(hashPassword(next))
+      return { ok: true, data: { hasPassword: true } }
+    } catch (err) {
+      return { ok: false, error: { code: 'SET_PASSWORD_FAILED', message: err.message } }
     }
   })
 }

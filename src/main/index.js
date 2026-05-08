@@ -21,6 +21,7 @@ function createWindow() {
   })
 
   mainWindow.on('ready-to-show', () => {
+    mainWindow.maximize()
     mainWindow.show()
   })
 
@@ -48,7 +49,8 @@ app.whenReady().then(async () => {
   const { registerAlumnosHandlers } = await import('./ipc/alumnos.js')
   const { registerAlumnosParticularesHandlers } = await import('./ipc/alumnos_particulares.js')
   const { registerDashboardHandlers } = await import('./ipc/dashboard.js')
-  const { registerConfiguracionHandlers } = await import('./ipc/configuracion.js')
+  const { registerConfiguracionHandlers, registerAuthHandlers } =
+    await import('./ipc/configuracion.js')
   const { registerMailHandlers, revisarMails } = await import('./ipc/mail.js')
   const { registerPagosHandlers } = await import('./ipc/pagos.js')
   const { registerReportesHandlers } = await import('./ipc/reportes.js')
@@ -59,6 +61,7 @@ app.whenReady().then(async () => {
   registerAlumnosParticularesHandlers(db)
   registerDashboardHandlers(db)
   registerConfiguracionHandlers(db)
+  registerAuthHandlers(db)
   registerMailHandlers(db)
   registerPagosHandlers(db)
   registerReportesHandlers(db)

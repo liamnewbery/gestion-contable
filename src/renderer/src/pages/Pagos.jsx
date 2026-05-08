@@ -453,7 +453,7 @@ function Pagos() {
           + Registrar pago en efectivo
         </Button>
         <Button variant="outline" onClick={handleRevisarMails} disabled={revisandoMails}>
-          {revisandoMails ? 'Revisando…' : 'Revisar mails ahora'}
+          {revisandoMails ? 'Revisando…' : 'Revisar si llegaron nuevos comprobantes'}
         </Button>
         {revisarFeedback && (
           <span className="text-sm text-muted-foreground">{revisarFeedback}</span>

@@ -61,6 +61,10 @@ const api = {
   db: {
     backup: () => ipcRenderer.invoke('db:backup'),
     restore: () => ipcRenderer.invoke('db:restore')
+  },
+  auth: {
+    verify: (password) => ipcRenderer.invoke('auth:verify', { password }),
+    setPassword: (data) => ipcRenderer.invoke('auth:set-password', data)
   }
 }
 

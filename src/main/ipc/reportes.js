@@ -225,6 +225,22 @@ export function registerReportesHandlers(db) {
     ORDER BY pe.apellido ASC, pe.nombre ASC
   `)
 
+  const listMensualConEfectivoStmt = db.prepare(`
+    SELECT
+      p.id,
+      p.fecha_pago,
+      p.monto,
+      p.rol_tipo,
+      pe.nombre,
+      pe.apellido,
+      pe.dni
+    FROM pagos p
+    LEFT JOIN personas pe ON pe.id = p.persona_id
+    WHERE p.estado = 'confirmado'
+      AND p.fecha_pago BETWEEN printf('%04d-%02d-01', ?, ?) AND printf('%04d-%02d-31', ?, ?)
+    ORDER BY pe.apellido ASC, pe.nombre ASC
+  `)
+
   const listRangoStmt = db.prepare(`
     SELECT
       p.id,
@@ -242,17 +258,36 @@ export function registerReportesHandlers(db) {
     ORDER BY pe.apellido ASC, pe.nombre ASC
   `)
 
+  const listRangoConEfectivoStmt = db.prepare(`
+    SELECT
+      p.id,
+      p.fecha_pago,
+      p.monto,
+      p.rol_tipo,
+      pe.nombre,
+      pe.apellido,
+      pe.dni
+    FROM pagos p
+    LEFT JOIN personas pe ON pe.id = p.persona_id
+    WHERE p.estado = 'confirmado'
+      AND p.fecha_pago BETWEEN ? AND ?
+    ORDER BY pe.apellido ASC, pe.nombre ASC
+  `)
+
   const smtpKeysStmt = db.prepare(
     "SELECT clave, valor FROM configuracion WHERE clave IN ('smtp_host','smtp_port','smtp_user','smtp_pass','mail_contador')"
   )
 
   function consultarPagos(params) {
+    const incluirEfectivo = params.incluirEfectivo === true
     if (params.modo === 'mensual') {
       const anio = Number(params.anio)
       const mes = Number(params.mes)
-      return listMensualStmt.all(anio, mes, anio, mes)
+      const stmt = incluirEfectivo ? listMensualConEfectivoStmt : listMensualStmt
+      return stmt.all(anio, mes, anio, mes)
     }
-    return listRangoStmt.all(params.desde, params.hasta)
+    const stmt = incluirEfectivo ? listRangoConEfectivoStmt : listRangoStmt
+    return stmt.all(params.desde, params.hasta)
   }
 
   async function generarPdfBuffer(params) {

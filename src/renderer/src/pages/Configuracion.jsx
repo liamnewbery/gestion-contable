@@ -93,6 +93,14 @@ function Configuracion() {
   const [backup, setBackup] = useState({ running: false, success: false, error: null })
   const [restore, setRestore] = useState({ running: false, error: null })
 
+  const [passwordStatus, setPasswordStatus] = useState({ loading: true, hasPassword: false })
+  const [passwordForm, setPasswordForm] = useState({ actual: '', nueva: '', confirmar: '' })
+  const [passwordSection, setPasswordSection] = useState({
+    saving: false,
+    saved: false,
+    error: null
+  })
+
   function updateSection(name, patch) {
     setSections((prev) => ({ ...prev, [name]: { ...prev[name], ...patch } }))
   }
@@ -118,10 +126,87 @@ function Configuracion() {
     }
   }
 
+  async function loadPasswordStatus() {
+    try {
+      const res = await window.api.auth.verify('')
+      if (!res.ok) {
+        setPasswordStatus({ loading: false, hasPassword: false })
+        return
+      }
+      setPasswordStatus({ loading: false, hasPassword: !!res.data.hasPassword })
+    } catch {
+      setPasswordStatus({ loading: false, hasPassword: false })
+    }
+  }
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadConfig()
+
+    loadPasswordStatus()
   }, [])
+
+  function setPasswordField(field, value) {
+    setPasswordForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function flashPasswordSaved() {
+    setPasswordSection({ saving: false, saved: true, error: null })
+    setTimeout(() => {
+      setPasswordSection((prev) => (prev.saved ? { ...prev, saved: false } : prev))
+    }, 2000)
+  }
+
+  async function handleSubmitPassword() {
+    setPasswordSection({ saving: true, saved: false, error: null })
+    if (passwordForm.nueva.length === 0) {
+      setPasswordSection({
+        saving: false,
+        saved: false,
+        error: 'La nueva contraseña no puede estar vacía'
+      })
+      return
+    }
+    if (passwordForm.nueva !== passwordForm.confirmar) {
+      setPasswordSection({ saving: false, saved: false, error: 'Las contraseñas no coinciden' })
+      return
+    }
+    try {
+      const res = await window.api.auth.setPassword({
+        actual: passwordForm.actual,
+        nueva: passwordForm.nueva
+      })
+      if (!res.ok) {
+        setPasswordSection({ saving: false, saved: false, error: res.error.message })
+        return
+      }
+      setPasswordForm({ actual: '', nueva: '', confirmar: '' })
+      setPasswordStatus({ loading: false, hasPassword: !!res.data.hasPassword })
+      flashPasswordSaved()
+    } catch (err) {
+      setPasswordSection({ saving: false, saved: false, error: err.message })
+    }
+  }
+
+  async function handleRemovePassword() {
+    if (!window.confirm('¿Seguro que querés eliminar la contraseña de acceso?')) return
+    setPasswordSection({ saving: true, saved: false, error: null })
+    try {
+      const res = await window.api.auth.setPassword({
+        actual: passwordForm.actual,
+        nueva: ''
+      })
+      if (!res.ok) {
+        setPasswordSection({ saving: false, saved: false, error: res.error.message })
+        return
+      }
+      setPasswordForm({ actual: '', nueva: '', confirmar: '' })
+      setPasswordStatus({ loading: false, hasPassword: false })
+      flashPasswordSaved()
+    } catch (err) {
+      setPasswordSection({ saving: false, saved: false, error: err.message })
+    }
+  }
 
   async function saveSection(name, claves) {
     updateSection(name, { saving: true, saved: false, error: null })
@@ -426,7 +511,65 @@ function Configuracion() {
         </SectionFooter>
       </Section>
 
-      {/* SECCIÓN 5 — Backup y restauración */}
+      {/* SECCIÓN — Contraseña de acceso */}
+      <Section title="Contraseña de acceso">
+        {passwordStatus.loading ? (
+          <p className="text-sm text-muted-foreground">Cargando…</p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              {passwordStatus.hasPassword
+                ? 'La app pide esta contraseña al abrirse. Podés cambiarla o eliminarla.'
+                : 'Establecé una contraseña para que la app pida una clave al abrirse.'}
+            </p>
+
+            {passwordStatus.hasPassword && (
+              <Field label="Contraseña actual">
+                <PasswordInput
+                  value={passwordForm.actual}
+                  onChange={(e) => setPasswordField('actual', e.target.value)}
+                />
+              </Field>
+            )}
+            <Field label="Nueva contraseña">
+              <PasswordInput
+                value={passwordForm.nueva}
+                onChange={(e) => setPasswordField('nueva', e.target.value)}
+              />
+            </Field>
+            <Field label="Confirmar nueva contraseña">
+              <PasswordInput
+                value={passwordForm.confirmar}
+                onChange={(e) => setPasswordField('confirmar', e.target.value)}
+              />
+            </Field>
+
+            <SectionFooter>
+              <SaveFeedback saved={passwordSection.saved} error={passwordSection.error} />
+              <div className="flex gap-2">
+                {passwordStatus.hasPassword && (
+                  <Button
+                    variant="outline"
+                    onClick={handleRemovePassword}
+                    disabled={passwordSection.saving}
+                  >
+                    Eliminar contraseña
+                  </Button>
+                )}
+                <Button onClick={handleSubmitPassword} disabled={passwordSection.saving}>
+                  {passwordSection.saving
+                    ? 'Guardando…'
+                    : passwordStatus.hasPassword
+                      ? 'Cambiar contraseña'
+                      : 'Establecer contraseña'}
+                </Button>
+              </div>
+            </SectionFooter>
+          </>
+        )}
+      </Section>
+
+      {/* SECCIÓN — Backup y restauración */}
       <Section title="Backup y restauración">
         <p className="text-sm text-muted-foreground">
           Exportá una copia de la base de datos como archivo .sqlite, o restaurá una copia previa.

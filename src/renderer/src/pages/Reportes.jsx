@@ -40,6 +40,8 @@ function Reportes() {
   const [desde, setDesde] = useState(today)
   const [hasta, setHasta] = useState(today)
 
+  const [incluirEfectivo, setIncluirEfectivo] = useState(false)
+
   const [generando, setGenerando] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [feedback, setFeedback] = useState(null)
@@ -65,8 +67,8 @@ function Reportes() {
   }
 
   function buildParams() {
-    if (modo === 'mensual') return { modo, anio, mes }
-    return { modo, desde, hasta }
+    if (modo === 'mensual') return { modo, anio, mes, incluirEfectivo }
+    return { modo, desde, hasta, incluirEfectivo }
   }
 
   function validarRango() {
@@ -212,6 +214,16 @@ function Reportes() {
             </label>
           </div>
         )}
+
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={incluirEfectivo}
+            onChange={(e) => setIncluirEfectivo(e.target.checked)}
+            disabled={busy}
+          />
+          <span className="text-sm">Incluir pagos en efectivo</span>
+        </label>
       </section>
 
       {error && (

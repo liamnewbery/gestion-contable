@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import Sidebar from '@/components/Sidebar'
 import Inicio from '@/pages/Inicio'
@@ -6,8 +7,15 @@ import Grupos from '@/pages/Grupos'
 import Pagos from '@/pages/Pagos'
 import Reportes from '@/pages/Reportes'
 import Configuracion from '@/pages/Configuracion'
+import Login from '@/pages/Login'
 
 function App() {
+  const [authenticated, setAuthenticated] = useState(false)
+
+  if (!authenticated) {
+    return <Login onSuccess={() => setAuthenticated(true)} />
+  }
+
   return (
     <MemoryRouter>
       <div className="flex h-full">
