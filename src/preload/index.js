@@ -53,6 +53,10 @@ const api = {
     update: (data) => ipcRenderer.invoke('pagos:update', data),
     abrirComprobante: (archivo_path) =>
       ipcRenderer.invoke('pagos:abrir-comprobante', { archivo_path })
+  },
+  reportes: {
+    generar: (params) => ipcRenderer.invoke('reportes:generar', params),
+    enviarMail: (params) => ipcRenderer.invoke('reportes:enviar-mail', params)
   }
 }
 

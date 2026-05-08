@@ -51,6 +51,7 @@ app.whenReady().then(async () => {
   const { registerConfiguracionHandlers } = await import('./ipc/configuracion.js')
   const { registerMailHandlers, revisarMails } = await import('./ipc/mail.js')
   const { registerPagosHandlers } = await import('./ipc/pagos.js')
+  const { registerReportesHandlers } = await import('./ipc/reportes.js')
   registerGruposHandlers(db)
   registerPacientesHandlers(db)
   registerAlumnosHandlers(db)
@@ -59,6 +60,7 @@ app.whenReady().then(async () => {
   registerConfiguracionHandlers(db)
   registerMailHandlers(db)
   registerPagosHandlers(db)
+  registerReportesHandlers(db)
 
   // Revisión inicial de mails al arrancar — fire and forget
   revisarMails(db)
