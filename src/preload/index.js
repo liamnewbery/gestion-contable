@@ -57,6 +57,10 @@ const api = {
   reportes: {
     generar: (params) => ipcRenderer.invoke('reportes:generar', params),
     enviarMail: (params) => ipcRenderer.invoke('reportes:enviar-mail', params)
+  },
+  db: {
+    backup: () => ipcRenderer.invoke('db:backup'),
+    restore: () => ipcRenderer.invoke('db:restore')
   }
 }
 

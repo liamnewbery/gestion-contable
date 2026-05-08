@@ -42,7 +42,7 @@ function createWindow() {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  const { db } = await import('./database/db.js')
+  const { db, dbPath } = await import('./database/db.js')
   const { registerGruposHandlers } = await import('./ipc/grupos.js')
   const { registerPacientesHandlers } = await import('./ipc/pacientes.js')
   const { registerAlumnosHandlers } = await import('./ipc/alumnos.js')
@@ -52,6 +52,7 @@ app.whenReady().then(async () => {
   const { registerMailHandlers, revisarMails } = await import('./ipc/mail.js')
   const { registerPagosHandlers } = await import('./ipc/pagos.js')
   const { registerReportesHandlers } = await import('./ipc/reportes.js')
+  const { registerDbHandlers } = await import('./ipc/db.js')
   registerGruposHandlers(db)
   registerPacientesHandlers(db)
   registerAlumnosHandlers(db)
@@ -61,6 +62,7 @@ app.whenReady().then(async () => {
   registerMailHandlers(db)
   registerPagosHandlers(db)
   registerReportesHandlers(db)
+  registerDbHandlers(db, dbPath)
 
   // Revisión inicial de mails al arrancar — fire and forget
   revisarMails(db)

@@ -90,6 +90,9 @@ function Configuracion() {
     ai: { ...initialSectionState }
   })
 
+  const [backup, setBackup] = useState({ running: false, success: false, error: null })
+  const [restore, setRestore] = useState({ running: false, error: null })
+
   function updateSection(name, patch) {
     setSections((prev) => ({ ...prev, [name]: { ...prev[name], ...patch } }))
   }
@@ -182,6 +185,47 @@ function Configuracion() {
         testing: false,
         testResult: { ok: false, message: err.message }
       })
+    }
+  }
+
+  async function handleBackup() {
+    setBackup({ running: true, success: false, error: null })
+    try {
+      const res = await window.api.db.backup()
+      if (!res.ok) {
+        setBackup({ running: false, success: false, error: res.error.message })
+        return
+      }
+      if (res.data.cancelado) {
+        setBackup({ running: false, success: false, error: null })
+        return
+      }
+      setBackup({ running: false, success: true, error: null })
+      setTimeout(() => {
+        setBackup((prev) => (prev.success ? { ...prev, success: false } : prev))
+      }, 3000)
+    } catch (err) {
+      setBackup({ running: false, success: false, error: err.message })
+    }
+  }
+
+  async function handleRestore() {
+    const confirmado = window.confirm(
+      '¿Seguro que querés restaurar el backup? Esto va a reemplazar todos los datos actuales y la app se va a reiniciar.'
+    )
+    if (!confirmado) return
+    setRestore({ running: true, error: null })
+    try {
+      const res = await window.api.db.restore()
+      if (!res.ok) {
+        setRestore({ running: false, error: res.error.message })
+        return
+      }
+      // Si la restauración tuvo éxito, el main process llamó a app.relaunch()
+      // y la ventana se está cerrando. Si fue cancelada, simplemente limpiamos.
+      setRestore({ running: false, error: null })
+    } catch (err) {
+      setRestore({ running: false, error: err.message })
     }
   }
 
@@ -377,6 +421,37 @@ function Configuracion() {
               disabled={sections.ai.saving}
             >
               {sections.ai.saving ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </div>
+        </SectionFooter>
+      </Section>
+
+      {/* SECCIÓN 5 — Backup y restauración */}
+      <Section title="Backup y restauración">
+        <p className="text-sm text-muted-foreground">
+          Exportá una copia de la base de datos como archivo .sqlite, o restaurá una copia previa.
+          Al restaurar, la app se va a reiniciar.
+        </p>
+        <SectionFooter>
+          <div className="flex flex-wrap items-center gap-3">
+            {backup.success && <span className="text-sm text-green-600">Backup guardado</span>}
+            {backup.error && <span className="text-sm text-destructive">{backup.error}</span>}
+            {restore.error && <span className="text-sm text-destructive">{restore.error}</span>}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleBackup}
+              disabled={backup.running || restore.running}
+            >
+              {backup.running ? 'Exportando…' : 'Exportar backup'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleRestore}
+              disabled={backup.running || restore.running}
+            >
+              {restore.running ? 'Restaurando…' : 'Restaurar backup'}
             </Button>
           </div>
         </SectionFooter>
