@@ -33,8 +33,18 @@ const MESES_CORTOS = [
 
 const TIPO_DISPLAY = {
   paciente: 'Paciente',
-  alumno: 'Alumno grupal',
   alumno_particular: 'Alumno particular'
+}
+
+function tipoLabelFor(pago) {
+  if (!pago.rol_tipo) return '—'
+  if (pago.rol_tipo === 'alumno') {
+    if (pago.grupo_titulos && !pago.grupo_titulos.includes(',')) {
+      return `Alumno · ${pago.grupo_titulos}`
+    }
+    return 'Alumno grupal'
+  }
+  return TIPO_DISPLAY[pago.rol_tipo] ?? '—'
 }
 
 const ORIGEN_DISPLAY = {
@@ -527,7 +537,7 @@ function Pagos() {
 function PagoRow({ pago, periodoActual, onAbrir, onCambiarEstado, onResolver }) {
   const [confirmingRechazo, setConfirmingRechazo] = useState(false)
   const sinAsignar = pago.persona_id == null
-  const tipoLabel = pago.rol_tipo ? TIPO_DISPLAY[pago.rol_tipo] : '—'
+  const tipoLabel = tipoLabelFor(pago)
   const periodoDistinto =
     pago.estado === 'revision' && pago.periodo_cubierto && pago.periodo_cubierto !== periodoActual
 

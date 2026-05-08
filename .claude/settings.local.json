@@ -61,7 +61,8 @@
       "PowerShell(npx eslint --no-cache src/renderer/src/pages/Pagos.jsx 2>&1 | Select-String \"warning|error\" | Group-Object { \\($_ -split \"  \"\\)[-1].Trim\\(\\) } | Format-Table Count, Name -AutoSize)",
       "Bash(npx eslint *)",
       "Bash(npm run *)",
-      "PowerShell(Get-ChildItem *)"
+      "PowerShell(Get-ChildItem *)",
+      "Bash(echo \"EXIT: $?\")"
     ]
   }
 }

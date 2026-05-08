@@ -23,7 +23,13 @@ export function registerPagosHandlers(db) {
       p.mail_subject,
       p.mail_date,
       pe.nombre  AS persona_nombre,
-      pe.apellido AS persona_apellido
+      pe.apellido AS persona_apellido,
+      CASE WHEN p.rol_tipo = 'alumno' THEN (
+        SELECT GROUP_CONCAT(g.titulo, ', ')
+        FROM alumno_grupo ag
+        JOIN grupos g ON g.id = ag.grupo_id AND g.activo = 1
+        WHERE ag.alumno_id = p.rol_id AND ag.egreso_en IS NULL
+      ) END AS grupo_titulos
     FROM pagos p
     LEFT JOIN personas pe ON pe.id = p.persona_id
     WHERE p.periodo_cubierto = printf('%04d-%02d', ?, ?)
