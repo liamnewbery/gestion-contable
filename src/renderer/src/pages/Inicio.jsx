@@ -40,7 +40,7 @@ function Inicio() {
   const [error, setError] = useState(null)
 
   const [expanded, setExpanded] = useState({
-    pacientes: true,
+    pacientes: false,
     alumnos_grupales: false,
     alumnos_particulares: false
   })
@@ -117,6 +117,33 @@ function Inicio() {
           </select>
         </div>
       </div>
+
+      {resumen && (
+        <div className="mb-6 grid grid-cols-2 gap-6">
+          <div>
+            <div className="text-sm text-muted-foreground">Cobrado este mes</div>
+            <div className="text-3xl font-semibold">
+              {formatPesos(
+                resumen.pacientes.monto_cobrado +
+                  resumen.alumnos_grupales.monto_cobrado +
+                  resumen.alumnos_particulares.monto_cobrado
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-muted-foreground">Por cobrar</div>
+            <div className="text-3xl font-semibold">
+              {formatPesos(
+                [
+                  ...resumen.pacientes.pendientes,
+                  ...resumen.alumnos_grupales.pendientes,
+                  ...resumen.alumnos_particulares.pendientes
+                ].reduce((s, p) => s + p.saldo, 0)
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
