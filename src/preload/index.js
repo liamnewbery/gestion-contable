@@ -49,6 +49,7 @@ const api = {
   },
   pagos: {
     list: (anio, mes) => ipcRenderer.invoke('pagos:list', { anio, mes }),
+    listRevision: () => ipcRenderer.invoke('pagos:list-revision'),
     create: (data) => ipcRenderer.invoke('pagos:create', data),
     update: (data) => ipcRenderer.invoke('pagos:update', data),
     abrirComprobante: (archivo_path) =>

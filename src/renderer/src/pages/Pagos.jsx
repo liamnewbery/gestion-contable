@@ -144,6 +144,10 @@ function buildPersonasFromLists(pacientesRows, alumnosRows, alumnosParticularesR
     if (a.alumno_id == null) continue
     const e = ensure(a.persona_id, a.nombre, a.apellido)
     if (e.alumno_id == null) e.alumno_id = a.alumno_id
+    if (a.grupo_id != null && a.grupo_titulo != null) {
+      if (!e.grupos) e.grupos = []
+      e.grupos.push({ grupo_id: a.grupo_id, titulo: a.grupo_titulo })
+    }
   }
   for (const ap of alumnosParticularesRows) {
     ensure(ap.persona_id, ap.nombre, ap.apellido).alumno_particular_id = ap.alumno_particular_id
@@ -159,14 +163,14 @@ function rolesDisponibles(persona) {
   if (!persona) return []
   const out = []
   if (persona.paciente_id != null)
-    out.push({ rol_tipo: 'paciente', rol_id: persona.paciente_id, label: 'Paciente' })
-  if (persona.alumno_id != null)
-    out.push({ rol_tipo: 'alumno', rol_id: persona.alumno_id, label: 'Alumno grupal' })
+    out.push({ rol_tipo: 'paciente', rol_id: persona.paciente_id, label: 'Sesión' })
+  if (persona.alumno_id != null && persona.grupos && persona.grupos.length > 0)
+    out.push({ rol_tipo: 'alumno', rol_id: persona.alumno_id, label: 'Clases grupales' })
   if (persona.alumno_particular_id != null)
     out.push({
       rol_tipo: 'alumno_particular',
       rol_id: persona.alumno_particular_id,
-      label: 'Alumno particular'
+      label: 'Clase particular'
     })
   return out
 }
@@ -249,10 +253,13 @@ function Pagos() {
   const [anio, setAnio] = useState(currentYear)
   const [mes, setMes] = useState(currentMonth)
   const [pagos, setPagos] = useState([])
+  const [pagosRevision, setPagosRevision] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingRevision, setLoadingRevision] = useState(true)
   const [pageError, setPageError] = useState(null)
   const [revisandoMails, setRevisandoMails] = useState(false)
   const [revisarFeedback, setRevisarFeedback] = useState(null)
+  const [tab, setTab] = useState('historial')
 
   const [resolverState, setResolverState] = useState({ open: false, pago: null })
   const [efectivoOpen, setEfectivoOpen] = useState(false)
@@ -292,10 +299,35 @@ function Pagos() {
     }
   }
 
+  async function loadPagosRevision() {
+    setLoadingRevision(true)
+    try {
+      const res = await window.api.pagos.listRevision()
+      if (!res.ok) {
+        setPagosRevision([])
+        return
+      }
+      setPagosRevision(res.data)
+    } catch {
+      setPagosRevision([])
+    } finally {
+      setLoadingRevision(false)
+    }
+  }
+
+  async function loadAllPagos() {
+    await Promise.all([loadPagos(), loadPagosRevision()])
+  }
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadPagos()
   }, [anio, mes]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadPagosRevision()
+  }, [])
 
   async function loadPersonas() {
     setPersonasLoading(true)
@@ -353,7 +385,7 @@ function Pagos() {
       setPageError(res.error.message)
       return
     }
-    await loadPagos()
+    await loadAllPagos()
   }
 
   async function handleResolverConfirmar(persona_id, rol_tipo, rol_id) {
@@ -368,7 +400,7 @@ function Pagos() {
       return res.error.message
     }
     closeResolver()
-    await loadPagos()
+    await loadAllPagos()
     return null
   }
 
@@ -384,7 +416,7 @@ function Pagos() {
       return res.error.message
     }
     closeResolver()
-    await loadPagos()
+    await loadAllPagos()
     return null
   }
 
@@ -392,7 +424,7 @@ function Pagos() {
     const res = await window.api.pagos.create(payload)
     if (!res.ok) return res.error.message
     closeEfectivo()
-    await loadPagos()
+    await loadAllPagos()
     return null
   }
 
@@ -410,7 +442,7 @@ function Pagos() {
       const partes = [`Procesados: ${procesados}`]
       if (errores.length > 0) partes.push(`con ${errores.length} error(es)`)
       setRevisarFeedback(partes.join(' '))
-      await loadPagos()
+      await loadAllPagos()
     } catch (err) {
       setPageError(err.message)
     } finally {
@@ -418,47 +450,86 @@ function Pagos() {
     }
   }
 
+  const filasHistorial = pagos.filter((p) => p.estado !== 'revision')
+  const filasRevision = pagosRevision
+  const filas = tab === 'historial' ? filasHistorial : filasRevision
+  const cargandoTab = tab === 'historial' ? loading : loadingRevision
+
   return (
     <div className="max-w-6xl">
       <div className="mb-4 flex items-center justify-between gap-4">
         <h1 className="text-4xl font-bold">Pagos</h1>
-        <div className="flex items-center gap-2">
-          <select
-            className={`${fieldClass} w-auto`}
-            value={mes}
-            onChange={(e) => setMes(Number(e.target.value))}
-          >
-            {MESES.map((nombre, i) => (
-              <option key={i} value={i + 1} disabled={i + 1 > maxMes}>
-                {nombre}
-              </option>
-            ))}
-          </select>
-          <select
-            className={`${fieldClass} w-auto`}
-            value={anio}
-            onChange={(e) => handleAnioChange(Number(e.target.value))}
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Button onClick={openEfectivo} className="bg-green-600 hover:bg-green-700 text-white">
-          + Registrar pago en efectivo
-        </Button>
-        <Button variant="outline" onClick={handleRevisarMails} disabled={revisandoMails}>
-          {revisandoMails ? 'Revisando…' : 'Revisar si llegaron nuevos comprobantes'}
-        </Button>
-        {revisarFeedback && (
-          <span className="text-sm text-muted-foreground">{revisarFeedback}</span>
+        {tab === 'historial' && (
+          <div className="flex items-center gap-2">
+            <select
+              className={`${fieldClass} w-auto`}
+              value={mes}
+              onChange={(e) => setMes(Number(e.target.value))}
+            >
+              {MESES.map((nombre, i) => (
+                <option key={i} value={i + 1} disabled={i + 1 > maxMes}>
+                  {nombre}
+                </option>
+              ))}
+            </select>
+            <select
+              className={`${fieldClass} w-auto`}
+              value={anio}
+              onChange={(e) => handleAnioChange(Number(e.target.value))}
+            >
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
       </div>
+
+      <div className="mb-6 inline-flex items-center gap-1 rounded-xl border bg-muted/40 p-1.5">
+        <button
+          type="button"
+          onClick={() => setTab('historial')}
+          className={`rounded-lg px-6 py-2.5 text-base font-semibold transition-all ${
+            tab === 'historial'
+              ? 'bg-primary text-primary-foreground shadow'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Historial de pagos
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('revisar')}
+          className={`flex items-center gap-2 rounded-lg px-6 py-2.5 text-base font-semibold transition-all ${
+            tab === 'revisar'
+              ? 'bg-primary text-primary-foreground shadow'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Pagos a revisar
+          {pagosRevision.length > 0 && (
+            <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-destructive px-2 text-sm font-bold text-white">
+              {pagosRevision.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {tab === 'historial' && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Button onClick={openEfectivo} className="bg-green-600 hover:bg-green-700 text-white">
+            + Registrar pago en efectivo
+          </Button>
+          <Button variant="outline" onClick={handleRevisarMails} disabled={revisandoMails}>
+            {revisandoMails ? 'Revisando…' : 'Revisar si llegaron nuevos comprobantes'}
+          </Button>
+          {revisarFeedback && (
+            <span className="text-sm text-muted-foreground">{revisarFeedback}</span>
+          )}
+        </div>
+      )}
 
       {pageError && (
         <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
@@ -466,11 +537,13 @@ function Pagos() {
         </div>
       )}
 
-      {loading ? (
+      {cargandoTab ? (
         <p className="text-muted-foreground">Cargando…</p>
-      ) : pagos.length === 0 ? (
+      ) : filas.length === 0 ? (
         <p className="text-muted-foreground">
-          No hay pagos en {MESES[mes - 1]} {anio}.
+          {tab === 'historial'
+            ? `No hay pagos en ${MESES[mes - 1]} ${anio}.`
+            : 'No hay pagos pendientes de revisión.'}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-card">
@@ -487,7 +560,7 @@ function Pagos() {
               </tr>
             </thead>
             <tbody>
-              {pagos.map((p) => (
+              {filas.map((p) => (
                 <PagoRow
                   key={p.id}
                   pago={p}
@@ -809,15 +882,9 @@ function EfectivoModal({
   onRegistrar,
   onCancelar
 }) {
-  const today = useMemo(() => {
-    const d = new Date()
-    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
-  }, [])
-
   const [personaId, setPersonaId] = useState('')
   const [rolTipo, setRolTipo] = useState('')
   const [monto, setMonto] = useState('')
-  const [fecha, setFecha] = useState(today)
   const [periodoAnio, setPeriodoAnio] = useState(currentYear)
   const [periodoMes, setPeriodoMes] = useState(currentMonth)
   const [submitting, setSubmitting] = useState(false)
@@ -861,17 +928,13 @@ function EfectivoModal({
       setError('El monto debe ser mayor a 0')
       return
     }
-    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-      setError('Fecha inválida')
-      return
-    }
     setSubmitting(true)
     const errMsg = await onRegistrar({
       persona_id: personaSeleccionada.persona_id,
       rol_tipo: rolElegido.rol_tipo,
       rol_id: rolElegido.rol_id,
       monto: montoNum,
-      fecha_pago: fecha,
+      fecha_pago: `${periodoAnio}-${pad2(periodoMes)}-01`,
       periodo_cubierto: periodoString(periodoAnio, periodoMes)
     })
     if (errMsg) {
@@ -907,7 +970,7 @@ function EfectivoModal({
       </Field>
 
       {personaSeleccionada && (
-        <Field label="Rol" required>
+        <Field label="Concepto" required>
           {roles.length === 0 ? (
             <div className="rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground">
               Esta persona no tiene roles activos
@@ -918,7 +981,7 @@ function EfectivoModal({
               value={rolTipo}
               onChange={(e) => setRolTipo(e.target.value)}
             >
-              <option value="">Seleccioná un rol…</option>
+              <option value="">Seleccioná un concepto…</option>
               {roles.map((r) => (
                 <option key={r.rol_tipo} value={r.rol_tipo}>
                   {r.label}
@@ -940,17 +1003,8 @@ function EfectivoModal({
         />
       </Field>
 
-      <Field label="Fecha" required>
-        <input
-          type="date"
-          className={fieldClass}
-          value={fecha}
-          onChange={(e) => setFecha(e.target.value)}
-        />
-      </Field>
-
       <div>
-        <span className="mb-1 block text-sm font-medium">Período cubierto</span>
+        <span className="mb-1 block text-sm font-medium">¿A qué mes corresponde este pago?</span>
         <div className="flex gap-2">
           <select
             className={fieldClass}

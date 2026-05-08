@@ -238,7 +238,13 @@ export function registerReportesHandlers(db) {
     FROM pagos p
     LEFT JOIN personas pe ON pe.id = p.persona_id
     WHERE p.estado = 'confirmado'
-      AND p.fecha_pago BETWEEN printf('%04d-%02d-01', ?, ?) AND printf('%04d-%02d-31', ?, ?)
+      AND (
+        (p.origen != 'efectivo'
+          AND p.fecha_pago BETWEEN printf('%04d-%02d-01', ?, ?) AND printf('%04d-%02d-31', ?, ?))
+        OR
+        (p.origen = 'efectivo'
+          AND p.periodo_cubierto = printf('%04d-%02d', ?, ?))
+      )
     ORDER BY pe.apellido ASC, pe.nombre ASC
   `)
 
@@ -271,7 +277,11 @@ export function registerReportesHandlers(db) {
     FROM pagos p
     LEFT JOIN personas pe ON pe.id = p.persona_id
     WHERE p.estado = 'confirmado'
-      AND p.fecha_pago BETWEEN ? AND ?
+      AND (
+        (p.origen != 'efectivo' AND p.fecha_pago BETWEEN ? AND ?)
+        OR
+        (p.origen = 'efectivo' AND p.periodo_cubierto BETWEEN ? AND ?)
+      )
     ORDER BY pe.apellido ASC, pe.nombre ASC
   `)
 
@@ -284,27 +294,30 @@ export function registerReportesHandlers(db) {
     log.info(
       `[reportes] consultarPagos params.incluirEfectivo=${JSON.stringify(params.incluirEfectivo)} (typeof=${typeof params.incluirEfectivo}) → resolved=${incluirEfectivo}`
     )
-    let stmt, stmtName, rows
+    let stmtName, rows
     if (params.modo === 'mensual') {
       const anio = Number(params.anio)
       const mes = Number(params.mes)
       if (incluirEfectivo) {
-        stmt = listMensualConEfectivoStmt
         stmtName = 'listMensualConEfectivoStmt'
+        // 6 params: 4 para fecha_pago BETWEEN (anio, mes, anio, mes)
+        // + 2 para periodo_cubierto = printf('%04d-%02d', anio, mes)
+        rows = listMensualConEfectivoStmt.all(anio, mes, anio, mes, anio, mes)
       } else {
-        stmt = listMensualStmt
         stmtName = 'listMensualStmt'
+        rows = listMensualStmt.all(anio, mes, anio, mes)
       }
-      rows = stmt.all(anio, mes, anio, mes)
     } else {
       if (incluirEfectivo) {
-        stmt = listRangoConEfectivoStmt
         stmtName = 'listRangoConEfectivoStmt'
+        // 4 params: desde, hasta para fecha_pago + desdePeriodo, hastaPeriodo (YYYY-MM) para periodo_cubierto
+        const desdePeriodo = String(params.desde).slice(0, 7)
+        const hastaPeriodo = String(params.hasta).slice(0, 7)
+        rows = listRangoConEfectivoStmt.all(params.desde, params.hasta, desdePeriodo, hastaPeriodo)
       } else {
-        stmt = listRangoStmt
         stmtName = 'listRangoStmt'
+        rows = listRangoStmt.all(params.desde, params.hasta)
       }
-      rows = stmt.all(params.desde, params.hasta)
     }
     log.info(`[reportes] stmt=${stmtName} rows=${rows.length}`)
     return rows

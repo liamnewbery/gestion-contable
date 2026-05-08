@@ -33,8 +33,39 @@ export function registerPagosHandlers(db) {
     FROM pagos p
     LEFT JOIN personas pe ON pe.id = p.persona_id
     WHERE p.periodo_cubierto = printf('%04d-%02d', ?, ?)
-       OR p.estado = 'revision'
-    ORDER BY (p.estado = 'revision') DESC, p.fecha_pago DESC
+    ORDER BY p.fecha_pago DESC
+  `)
+
+  const listRevisionStmt = db.prepare(`
+    SELECT
+      p.id,
+      p.persona_id,
+      p.rol_tipo,
+      p.rol_id,
+      p.monto,
+      p.fecha_pago,
+      p.periodo_cubierto,
+      p.origen,
+      p.mail_uid,
+      p.confianza_ia,
+      p.estado,
+      p.creado_en,
+      p.archivo_path,
+      p.mail_from,
+      p.mail_subject,
+      p.mail_date,
+      pe.nombre  AS persona_nombre,
+      pe.apellido AS persona_apellido,
+      CASE WHEN p.rol_tipo = 'alumno' THEN (
+        SELECT GROUP_CONCAT(g.titulo, ', ')
+        FROM alumno_grupo ag
+        JOIN grupos g ON g.id = ag.grupo_id AND g.activo = 1
+        WHERE ag.alumno_id = p.rol_id AND ag.egreso_en IS NULL
+      ) END AS grupo_titulos
+    FROM pagos p
+    LEFT JOIN personas pe ON pe.id = p.persona_id
+    WHERE p.estado = 'revision'
+    ORDER BY p.fecha_pago DESC
   `)
 
   const checkExistsStmt = db.prepare('SELECT id FROM pagos WHERE id = ?')
@@ -55,6 +86,15 @@ export function registerPagosHandlers(db) {
   ipcMain.handle('pagos:list', (_e, { anio, mes }) => {
     try {
       const rows = listStmt.all(anio, mes)
+      return { ok: true, data: rows }
+    } catch (err) {
+      return { ok: false, error: { code: 'LIST_FAILED', message: err.message } }
+    }
+  })
+
+  ipcMain.handle('pagos:list-revision', () => {
+    try {
+      const rows = listRevisionStmt.all()
       return { ok: true, data: rows }
     } catch (err) {
       return { ok: false, error: { code: 'LIST_FAILED', message: err.message } }
