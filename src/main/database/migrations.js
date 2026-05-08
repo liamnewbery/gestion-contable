@@ -67,9 +67,9 @@ const MIGRATIONS = [
 
         CREATE TABLE IF NOT EXISTS pagos (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          persona_id INTEGER NOT NULL,
-          rol_tipo TEXT NOT NULL CHECK (rol_tipo IN ('paciente', 'alumno', 'alumno_particular')),
-          rol_id INTEGER NOT NULL,
+          persona_id INTEGER,
+          rol_tipo TEXT CHECK (rol_tipo IN ('paciente', 'alumno', 'alumno_particular')),
+          rol_id INTEGER,
           monto REAL NOT NULL,
           fecha_pago TEXT NOT NULL,
           periodo_cubierto TEXT,
@@ -78,6 +78,10 @@ const MIGRATIONS = [
           confianza_ia REAL,
           estado TEXT NOT NULL CHECK (estado IN ('confirmado', 'revision', 'rechazado')),
           creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
+          archivo_path TEXT,
+          mail_from TEXT,
+          mail_subject TEXT,
+          mail_date TEXT,
           FOREIGN KEY (persona_id) REFERENCES personas(id)
         );
 
@@ -110,9 +114,9 @@ const MIGRATIONS = [
 
         CREATE TABLE pagos (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          persona_id INTEGER NOT NULL,
-          rol_tipo TEXT NOT NULL CHECK (rol_tipo IN ('paciente', 'alumno', 'alumno_particular')),
-          rol_id INTEGER NOT NULL,
+          persona_id INTEGER,
+          rol_tipo TEXT CHECK (rol_tipo IN ('paciente', 'alumno', 'alumno_particular')),
+          rol_id INTEGER,
           monto REAL NOT NULL,
           fecha_pago TEXT NOT NULL,
           periodo_cubierto TEXT,
@@ -121,10 +125,96 @@ const MIGRATIONS = [
           confianza_ia REAL,
           estado TEXT NOT NULL CHECK (estado IN ('confirmado', 'revision', 'rechazado')),
           creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
+          archivo_path TEXT,
+          mail_from TEXT,
+          mail_subject TEXT,
+          mail_date TEXT,
           FOREIGN KEY (persona_id) REFERENCES personas(id)
         );
 
         INSERT INTO pagos SELECT * FROM pagos_old;
+
+        DROP TABLE pagos_old;
+      `)
+    }
+  },
+  {
+    version: 3,
+    description: 'agregar columnas de comprobante y contexto de mail a pagos',
+    up: (db) => {
+      db.exec(`
+        ALTER TABLE pagos RENAME TO pagos_old;
+
+        CREATE TABLE pagos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          persona_id INTEGER,
+          rol_tipo TEXT CHECK (rol_tipo IN ('paciente', 'alumno', 'alumno_particular')),
+          rol_id INTEGER,
+          monto REAL NOT NULL,
+          fecha_pago TEXT NOT NULL,
+          periodo_cubierto TEXT,
+          origen TEXT NOT NULL CHECK (origen IN ('ia', 'manual', 'efectivo')),
+          mail_uid TEXT UNIQUE,
+          confianza_ia REAL,
+          estado TEXT NOT NULL CHECK (estado IN ('confirmado', 'revision', 'rechazado')),
+          creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
+          archivo_path TEXT,
+          mail_from TEXT,
+          mail_subject TEXT,
+          mail_date TEXT,
+          FOREIGN KEY (persona_id) REFERENCES personas(id)
+        );
+
+        INSERT INTO pagos (
+          id, persona_id, rol_tipo, rol_id, monto, fecha_pago, periodo_cubierto,
+          origen, mail_uid, confianza_ia, estado, creado_en
+        )
+        SELECT
+          id, persona_id, rol_tipo, rol_id, monto, fecha_pago, periodo_cubierto,
+          origen, mail_uid, confianza_ia, estado, creado_en
+        FROM pagos_old;
+
+        DROP TABLE pagos_old;
+      `)
+    }
+  },
+  {
+    version: 4,
+    description: 'hacer nullable persona_id, rol_tipo y rol_id en pagos',
+    up: (db) => {
+      db.exec(`
+        ALTER TABLE pagos RENAME TO pagos_old;
+
+        CREATE TABLE pagos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          persona_id INTEGER,
+          rol_tipo TEXT CHECK (rol_tipo IN ('paciente', 'alumno', 'alumno_particular')),
+          rol_id INTEGER,
+          monto REAL NOT NULL,
+          fecha_pago TEXT NOT NULL,
+          periodo_cubierto TEXT,
+          origen TEXT NOT NULL CHECK (origen IN ('ia', 'manual', 'efectivo')),
+          mail_uid TEXT UNIQUE,
+          confianza_ia REAL,
+          estado TEXT NOT NULL CHECK (estado IN ('confirmado', 'revision', 'rechazado')),
+          creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
+          archivo_path TEXT,
+          mail_from TEXT,
+          mail_subject TEXT,
+          mail_date TEXT,
+          FOREIGN KEY (persona_id) REFERENCES personas(id)
+        );
+
+        INSERT INTO pagos (
+          id, persona_id, rol_tipo, rol_id, monto, fecha_pago, periodo_cubierto,
+          origen, mail_uid, confianza_ia, estado, creado_en,
+          archivo_path, mail_from, mail_subject, mail_date
+        )
+        SELECT
+          id, persona_id, rol_tipo, rol_id, monto, fecha_pago, periodo_cubierto,
+          origen, mail_uid, confianza_ia, estado, creado_en,
+          archivo_path, mail_from, mail_subject, mail_date
+        FROM pagos_old;
 
         DROP TABLE pagos_old;
       `)

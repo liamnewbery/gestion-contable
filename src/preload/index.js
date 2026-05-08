@@ -42,8 +42,10 @@ const api = {
       ipcRenderer.invoke('configuracion:test-imap', { host, port, user, pass }),
     testSmtp: (host, port, user, pass) =>
       ipcRenderer.invoke('configuracion:test-smtp', { host, port, user, pass }),
-    testAnthropic: (api_key) =>
-      ipcRenderer.invoke('configuracion:test-anthropic', { api_key })
+    testAnthropic: (api_key) => ipcRenderer.invoke('configuracion:test-anthropic', { api_key })
+  },
+  mail: {
+    revisarAhora: () => ipcRenderer.invoke('mail:revisar-ahora')
   }
 }
 

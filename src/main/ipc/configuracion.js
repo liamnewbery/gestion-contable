@@ -2,7 +2,7 @@ import { ipcMain, safeStorage } from 'electron'
 import { ImapFlow } from 'imapflow'
 import nodemailer from 'nodemailer'
 
-const SENSITIVE_KEYS = new Set(['imap_pass', 'smtp_pass', 'anthropic_api_key'])
+export const SENSITIVE_KEYS = new Set(['imap_pass', 'smtp_pass', 'anthropic_api_key'])
 
 const ALL_KEYS = [
   'mail_contador',
@@ -23,7 +23,7 @@ function encryptIfSensitive(clave, valor) {
   return Buffer.from(safeStorage.encryptString(valor)).toString('base64')
 }
 
-function decryptIfSensitive(clave, valor) {
+export function decryptIfSensitive(clave, valor) {
   if (!SENSITIVE_KEYS.has(clave)) return valor
   if (valor == null || valor === '') return valor
   if (!safeStorage.isEncryptionAvailable()) return valor

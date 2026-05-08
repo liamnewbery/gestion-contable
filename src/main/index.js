@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import log from 'electron-log'
 import icon from '../../resources/icon.png?asset'
 
 function createWindow() {
@@ -45,17 +46,33 @@ app.whenReady().then(async () => {
   const { registerGruposHandlers } = await import('./ipc/grupos.js')
   const { registerPacientesHandlers } = await import('./ipc/pacientes.js')
   const { registerAlumnosHandlers } = await import('./ipc/alumnos.js')
-  const { registerAlumnosParticularesHandlers } = await import(
-    './ipc/alumnos_particulares.js'
-  )
+  const { registerAlumnosParticularesHandlers } = await import('./ipc/alumnos_particulares.js')
   const { registerDashboardHandlers } = await import('./ipc/dashboard.js')
   const { registerConfiguracionHandlers } = await import('./ipc/configuracion.js')
+  const { registerMailHandlers, revisarMails } = await import('./ipc/mail.js')
   registerGruposHandlers(db)
   registerPacientesHandlers(db)
   registerAlumnosHandlers(db)
   registerAlumnosParticularesHandlers(db)
   registerDashboardHandlers(db)
   registerConfiguracionHandlers(db)
+  registerMailHandlers(db)
+
+  // Revisión inicial de mails al arrancar — fire and forget
+  revisarMails(db)
+    .then((result) => {
+      if (result.procesados > 0 || result.errores.length > 0) {
+        log.info(
+          `Mail revision al arrancar: procesados=${result.procesados}, errores=${result.errores.length}`
+        )
+        for (const e of result.errores) {
+          log.warn(`  uid=${e.uid}: ${e.mensaje}`)
+        }
+      }
+    })
+    .catch((err) => {
+      log.error('Mail revision al arrancar falló:', err)
+    })
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
