@@ -3,6 +3,7 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import nodemailer from 'nodemailer'
 import pdfmake from 'pdfmake'
+import vfsFonts from 'pdfmake/build/vfs_fonts'
 import { decryptIfSensitive } from './configuracion.js'
 
 const MESES = [
@@ -26,13 +27,18 @@ const TIPO_LABEL = {
   alumno_particular: 'Alumno particular'
 }
 
-// pdfmake en Node es un singleton — fuente y políticas se configuran una vez al importar.
+// pdfmake en Node es un singleton — fonts y vfs se configuran una vez al importar.
+// Embebemos Roboto vía vfs (base64) para evitar acceso a disco; las built-in PDFKit
+// (Helvetica) chocan con setLocalAccessPolicy.
+for (const [name, b64] of Object.entries(vfsFonts)) {
+  pdfmake.virtualfs.writeFileSync(name, b64, 'base64')
+}
 pdfmake.setFonts({
-  Helvetica: {
-    normal: 'Helvetica',
-    bold: 'Helvetica-Bold',
-    italics: 'Helvetica-Oblique',
-    bolditalics: 'Helvetica-BoldOblique'
+  Roboto: {
+    normal: 'Roboto-Regular.ttf',
+    bold: 'Roboto-Medium.ttf',
+    italics: 'Roboto-Italic.ttf',
+    bolditalics: 'Roboto-MediumItalic.ttf'
   }
 })
 pdfmake.setUrlAccessPolicy(() => false)
@@ -196,7 +202,7 @@ function buildPdfDoc(rows, info) {
   return {
     pageSize: 'A4',
     pageMargins: [40, 40, 40, 40],
-    defaultStyle: { font: 'Helvetica', fontSize: 10 },
+    defaultStyle: { font: 'Roboto', fontSize: 10 },
     content
   }
 }
