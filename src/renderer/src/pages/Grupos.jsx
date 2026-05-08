@@ -158,8 +158,14 @@ function Grupos() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setSubmitting(true)
     setFormError(null)
+
+    if (formData.precio_base === '' || Number(formData.precio_base) === 0) {
+      setFormError('El precio es obligatorio')
+      return
+    }
+
+    setSubmitting(true)
     try {
       const payload = {
         tipo_clase: formData.tipo_clase,
@@ -238,7 +244,12 @@ function Grupos() {
         {vista === 'activos' ? (
           <>
             <h1 className="text-4xl font-bold">Grupos</h1>
-            <Button onClick={openCreate}>Nuevo grupo</Button>
+            <Button
+              onClick={openCreate}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              + Nuevo grupo
+            </Button>
           </>
         ) : (
           <>
@@ -370,7 +381,7 @@ function Grupos() {
               />
             </Field>
 
-            <Field label="Precio base">
+            <Field label="Precio">
               <input
                 type="number"
                 min="0"
@@ -378,7 +389,6 @@ function Grupos() {
                 className={fieldClass}
                 value={formData.precio_base}
                 onChange={(e) => setFormData({ ...formData, precio_base: e.target.value })}
-                placeholder="Opcional"
               />
             </Field>
 

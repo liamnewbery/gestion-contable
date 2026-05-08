@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -43,7 +43,15 @@ function createWindow() {
 app.whenReady().then(async () => {
   const { db } = await import('./database/db.js')
   const { registerGruposHandlers } = await import('./ipc/grupos.js')
+  const { registerPacientesHandlers } = await import('./ipc/pacientes.js')
+  const { registerAlumnosHandlers } = await import('./ipc/alumnos.js')
+  const { registerAlumnosParticularesHandlers } = await import(
+    './ipc/alumnos_particulares.js'
+  )
   registerGruposHandlers(db)
+  registerPacientesHandlers(db)
+  registerAlumnosHandlers(db)
+  registerAlumnosParticularesHandlers(db)
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
@@ -54,9 +62,6 @@ app.whenReady().then(async () => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
-
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
 
   createWindow()
 

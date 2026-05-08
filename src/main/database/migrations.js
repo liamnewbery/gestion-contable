@@ -13,30 +13,34 @@ export function initDatabase(db) {
 
     CREATE TABLE IF NOT EXISTS pacientes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      persona_id INTEGER NOT NULL,
-      tipo_servicio TEXT NOT NULL CHECK (tipo_servicio IN ('psicologia', 'astrologia', 'tarot')),
+      persona_id INTEGER NOT NULL REFERENCES personas(id),
       precio_base REAL,
       frecuencia_pago TEXT CHECK (frecuencia_pago IN ('mensual', 'semanal', 'quincenal')),
       precio_es_especial INTEGER NOT NULL DEFAULT 0,
-      activo INTEGER NOT NULL DEFAULT 1,
-      FOREIGN KEY (persona_id) REFERENCES personas(id)
+      activo INTEGER NOT NULL DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS alumnos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       persona_id INTEGER NOT NULL,
-      tipo_clase TEXT NOT NULL CHECK (tipo_clase IN ('tarot', 'astrologia')),
+      activo INTEGER NOT NULL DEFAULT 1,
+      FOREIGN KEY (persona_id) REFERENCES personas(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS alumnos_particulares (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      persona_id INTEGER NOT NULL REFERENCES personas(id),
+      tipo_clase TEXT NOT NULL CHECK (tipo_clase IN ('tarot', 'astrologia', 'filosofia')),
       precio_base REAL,
       frecuencia_pago TEXT CHECK (frecuencia_pago IN ('mensual', 'semanal', 'quincenal')),
       precio_es_especial INTEGER NOT NULL DEFAULT 0,
-      activo INTEGER NOT NULL DEFAULT 1,
-      FOREIGN KEY (persona_id) REFERENCES personas(id)
+      activo INTEGER NOT NULL DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS grupos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       titulo TEXT NOT NULL,
-      tipo_clase TEXT NOT NULL CHECK (tipo_clase IN ('tarot', 'astrologia')),
+      tipo_clase TEXT NOT NULL CHECK (tipo_clase IN ('tarot', 'astrologia', 'filosofia')),
       modalidad TEXT NOT NULL CHECK (modalidad IN ('presencial', 'online')),
       dia TEXT NOT NULL CHECK (dia IN ('lunes','martes','miercoles','jueves','viernes','sabado','domingo')),
       horario TEXT NOT NULL,

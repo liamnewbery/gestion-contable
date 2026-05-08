@@ -1,9 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
-  UserRound,
-  GraduationCap,
   Users,
+  BookOpen,
   CreditCard,
   FileText,
   Settings
@@ -12,9 +11,8 @@ import { cn } from '@/lib/utils'
 
 const mainItems = [
   { to: '/', label: 'Inicio', icon: LayoutDashboard, end: true },
-  { to: '/pacientes', label: 'Pacientes', icon: UserRound },
-  { to: '/alumnos', label: 'Alumnos', icon: GraduationCap },
-  { to: '/grupos', label: 'Grupos', icon: Users },
+  { to: '/clientes', label: 'Clientes', icon: Users },
+  { to: '/grupos', label: 'Grupos', icon: BookOpen },
   { to: '/pagos', label: 'Pagos', icon: CreditCard },
   { to: '/reportes', label: 'Reportes', icon: FileText }
 ]

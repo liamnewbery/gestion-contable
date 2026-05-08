@@ -2,7 +2,8 @@ import { ipcMain } from 'electron'
 
 const TIPO_CLASE_DISPLAY = {
   tarot: 'Tarot',
-  astrologia: 'Astrología'
+  astrologia: 'Astrología',
+  filosofia: 'Filosofía'
 }
 
 const MODALIDAD_DISPLAY = {
