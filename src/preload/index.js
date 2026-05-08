@@ -46,6 +46,13 @@ const api = {
   },
   mail: {
     revisarAhora: () => ipcRenderer.invoke('mail:revisar-ahora')
+  },
+  pagos: {
+    list: (anio, mes) => ipcRenderer.invoke('pagos:list', { anio, mes }),
+    create: (data) => ipcRenderer.invoke('pagos:create', data),
+    update: (data) => ipcRenderer.invoke('pagos:update', data),
+    abrirComprobante: (archivo_path) =>
+      ipcRenderer.invoke('pagos:abrir-comprobante', { archivo_path })
   }
 }
 
