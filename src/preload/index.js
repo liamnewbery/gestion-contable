@@ -31,6 +31,9 @@ const api = {
     update: (data) => ipcRenderer.invoke('alumnos_particulares:update', data),
     deactivate: (id) =>
       ipcRenderer.invoke('alumnos_particulares:deactivate', { alumno_particular_id: id })
+  },
+  dashboard: {
+    resumen: (anio, mes) => ipcRenderer.invoke('dashboard:resumen', { anio, mes })
   }
 }
 
