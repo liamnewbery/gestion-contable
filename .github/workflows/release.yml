@@ -1,0 +1,35 @@
+name: Release
+
+# Se dispara al pushear un tag de versión, ej: v1.0.1
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Necesario para que el GITHUB_TOKEN pueda crear el Release y subir el instalador.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Build installer and publish to GitHub Releases
+        run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
