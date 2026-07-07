@@ -257,14 +257,7 @@ function buildPadronPdfDoc(rows, info) {
       text: `Generado el ${fechaGeneradoString()}`,
       fontSize: 10,
       color: '#666666',
-      margin: [0, 2, 0, 2]
-    },
-    {
-      text: 'Importe mensual estimado según el precio y la frecuencia vigentes de cada cliente activo, haya pagado o no.',
-      fontSize: 9,
-      italics: true,
-      color: '#666666',
-      margin: [0, 0, 0, 12]
+      margin: [0, 2, 0, 12]
     }
   ]
 
