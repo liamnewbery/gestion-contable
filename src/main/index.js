@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import log from 'electron-log'
+import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 
 function createWindow() {
@@ -94,6 +95,16 @@ app.whenReady().then(async () => {
   })
 
   createWindow()
+
+  // Auto-update desde GitHub Releases (solo en la app empaquetada).
+  // Chequea al arrancar; si hay versión nueva la descarga en segundo plano,
+  // avisa con una notificación y la instala al cerrar la app.
+  if (!is.dev) {
+    autoUpdater.logger = log
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      log.error('Auto-update falló:', err)
+    })
+  }
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
