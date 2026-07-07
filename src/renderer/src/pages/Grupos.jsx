@@ -281,7 +281,14 @@ function Grupos() {
             <li key={g.id} className="rounded-lg border bg-card p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold">{g.titulo}</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{g.titulo}</span>
+                    {g.alumnos_activos != null && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                        {g.alumnos_activos} {g.alumnos_activos === 1 ? 'alumno' : 'alumnos'}
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-1 text-sm text-muted-foreground">
                     {formatPrecio(g.precio_base)}
                     {g.frecuencia_pago ? ` · ${g.frecuencia_pago}` : ''}

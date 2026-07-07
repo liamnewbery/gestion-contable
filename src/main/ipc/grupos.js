@@ -30,10 +30,11 @@ export function registerGruposHandlers(db) {
     SELECT g.*, COALESCE(c.alumnos_activos, 0) AS alumnos_activos
     FROM grupos g
     LEFT JOIN (
-      SELECT grupo_id, COUNT(*) AS alumnos_activos
-      FROM alumno_grupo
-      WHERE egreso_en IS NULL
-      GROUP BY grupo_id
+      SELECT ag.grupo_id, COUNT(*) AS alumnos_activos
+      FROM alumno_grupo ag
+      JOIN alumnos a ON a.id = ag.alumno_id AND a.activo = 1
+      WHERE ag.egreso_en IS NULL
+      GROUP BY ag.grupo_id
     ) c ON c.grupo_id = g.id
     WHERE g.activo = 1
     ORDER BY g.tipo_clase ASC, g.titulo ASC
@@ -66,8 +67,9 @@ export function registerGruposHandlers(db) {
 
   const countAlumnosActivosStmt = db.prepare(`
     SELECT COUNT(*) AS count
-    FROM alumno_grupo
-    WHERE grupo_id = ? AND egreso_en IS NULL
+    FROM alumno_grupo ag
+    JOIN alumnos a ON a.id = ag.alumno_id AND a.activo = 1
+    WHERE ag.grupo_id = ? AND ag.egreso_en IS NULL
   `)
 
   const deactivateStmt = db.prepare('UPDATE grupos SET activo = 0 WHERE id = ?')
