@@ -399,6 +399,7 @@ export function registerReportesHandlers(db) {
       pe.dni,
       g.precio_base     AS grupo_precio_base,
       g.frecuencia_pago AS grupo_frecuencia_pago,
+      g.modalidad       AS grupo_modalidad,
       ag.precio_override
     FROM alumnos a
     JOIN personas pe ON pe.id = a.persona_id
@@ -465,6 +466,9 @@ export function registerReportesHandlers(db) {
     const anio = Number(params.anio)
     const mes = Number(params.mes)
     const lunes = lunesEnMes(anio, mes)
+    // Los grupos presenciales se cobran en efectivo: se excluyen salvo que se pida
+    // incluir el efectivo (mismo criterio que el reporte de pagos).
+    const incluirEfectivo = params.incluirEfectivo === true
     const rows = []
 
     for (const r of listPacientesClientesStmt.all()) {
@@ -482,6 +486,7 @@ export function registerReportesHandlers(db) {
     // sumando los montos y marcando "varias" si las frecuencias difieren.
     const alumnosMap = new Map()
     for (const r of listAlumnosGruposClientesStmt.all()) {
+      if (!incluirEfectivo && r.grupo_modalidad === 'presencial') continue
       let a = alumnosMap.get(r.alumno_id)
       if (!a) {
         a = {

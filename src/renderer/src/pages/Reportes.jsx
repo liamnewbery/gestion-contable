@@ -134,8 +134,9 @@ function Reportes() {
 
   // El resumen de clientes siempre es mensual: usa el mes/año seleccionado para
   // calcular el importe de los clientes semanales (depende de la cantidad de lunes).
+  // Respeta el mismo check de efectivo: sin tildar, excluye los grupos presenciales.
   function buildPadronParams() {
-    return { tipoReporte: 'clientes', modo: 'mensual', anio, mes }
+    return { tipoReporte: 'clientes', modo: 'mensual', anio, mes, incluirEfectivo }
   }
 
   async function handleDescargarPadron() {
@@ -297,8 +298,9 @@ function Reportes() {
       <div className="mt-6 border-t pt-6">
         <h2 className="text-sm font-semibold">Resumen de clientes</h2>
         <p className="mb-3 mt-1 text-xs text-muted-foreground">
-          Todos los clientes activos con lo que paga cada uno por mes, hayan pagado o no. Calculado
-          para {MESES[mes - 1]} {anio}.
+          Todos los clientes activos con lo que paga cada uno por mes, hayan pagado o no. Los
+          alumnos de grupos presenciales (efectivo) se incluyen solo si tildás «Incluir pagos en
+          efectivo». Calculado para {MESES[mes - 1]} {anio}.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={handleDescargarPadron} disabled={busy}>
