@@ -92,7 +92,7 @@ function formatFecha(yyyy_mm_dd) {
 function formatMonto(n) {
   if (n == null) return ''
   return `$ ${Number(n).toLocaleString('es-AR', {
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2
   })}`
 }

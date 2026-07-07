@@ -59,7 +59,7 @@ function pad2(n) {
 
 function formatMonto(n) {
   return `$ ${Number(n).toLocaleString('es-AR', {
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2
   })}`
 }
