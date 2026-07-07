@@ -1,21 +1,5 @@
 import { ipcMain } from 'electron'
-
-function lunesEnMes(anio, mes) {
-  let count = 0
-  const ultimoDia = new Date(anio, mes, 0).getDate()
-  for (let d = 1; d <= ultimoDia; d++) {
-    if (new Date(anio, mes - 1, d).getDay() === 1) count++
-  }
-  return count
-}
-
-function montoMes(precio, frecuencia, lunes) {
-  if (precio == null) return 0
-  if (frecuencia === 'mensual') return precio
-  if (frecuencia === 'quincenal') return precio * 2
-  if (frecuencia === 'semanal') return precio * lunes
-  return 0
-}
+import { lunesEnMes, montoMes } from '../lib/montos.js'
 
 function sumValues(map) {
   let total = 0

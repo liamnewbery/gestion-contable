@@ -44,11 +44,13 @@ function Reportes() {
 
   const [generando, setGenerando] = useState(false)
   const [enviando, setEnviando] = useState(false)
+  const [generandoPadron, setGenerandoPadron] = useState(false)
+  const [enviandoPadron, setEnviandoPadron] = useState(false)
   const [feedback, setFeedback] = useState(null)
   const [error, setError] = useState(null)
   const [smtpHint, setSmtpHint] = useState(false)
 
-  const busy = generando || enviando
+  const busy = generando || enviando || generandoPadron || enviandoPadron
 
   const isCurrentYear = anio === currentYear
   const maxMes = isCurrentYear ? currentMonth : 12
@@ -127,6 +129,48 @@ function Reportes() {
       setError(err.message)
     } finally {
       setEnviando(false)
+    }
+  }
+
+  // El resumen de clientes siempre es mensual: usa el mes/año seleccionado para
+  // calcular el importe de los clientes semanales (depende de la cantidad de lunes).
+  function buildPadronParams() {
+    return { tipoReporte: 'clientes', modo: 'mensual', anio, mes }
+  }
+
+  async function handleDescargarPadron() {
+    resetFeedback()
+    setGenerandoPadron(true)
+    try {
+      const res = await window.api.reportes.generar(buildPadronParams())
+      if (!res.ok) {
+        setError(res.error.message)
+        return
+      }
+      if (res.data.cancelado) return
+      setFeedback(`Resumen guardado en ${res.data.path}`)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setGenerandoPadron(false)
+    }
+  }
+
+  async function handleEnviarPadron() {
+    resetFeedback()
+    setEnviandoPadron(true)
+    try {
+      const res = await window.api.reportes.enviarMail(buildPadronParams())
+      if (!res.ok) {
+        setError(res.error.message)
+        if (res.error.code === 'SMTP_NO_CONFIGURADO') setSmtpHint(true)
+        return
+      }
+      setFeedback('Resumen enviado correctamente')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setEnviandoPadron(false)
     }
   }
 
@@ -238,15 +282,35 @@ function Reportes() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={handleDescargar} disabled={busy}>
-          {generando ? 'Generando…' : 'Descargar PDF'}
-        </Button>
-        <Button variant="outline" onClick={handleEnviar} disabled={busy}>
-          {enviando ? 'Enviando…' : 'Enviar al contador'}
-        </Button>
-        {feedback && <span className="text-sm text-muted-foreground">{feedback}</span>}
+      <div>
+        <h2 className="mb-2 text-sm font-semibold">Reporte de pagos del período</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={handleDescargar} disabled={busy}>
+            {generando ? 'Generando…' : 'Descargar PDF'}
+          </Button>
+          <Button variant="outline" onClick={handleEnviar} disabled={busy}>
+            {enviando ? 'Enviando…' : 'Enviar al contador'}
+          </Button>
+        </div>
       </div>
+
+      <div className="mt-6 border-t pt-6">
+        <h2 className="text-sm font-semibold">Resumen de clientes</h2>
+        <p className="mb-3 mt-1 text-xs text-muted-foreground">
+          Todos los clientes activos con lo que paga cada uno por mes, hayan pagado o no. Calculado
+          para {MESES[mes - 1]} {anio}.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={handleDescargarPadron} disabled={busy}>
+            {generandoPadron ? 'Generando…' : 'Descargar resumen'}
+          </Button>
+          <Button variant="outline" onClick={handleEnviarPadron} disabled={busy}>
+            {enviandoPadron ? 'Enviando…' : 'Enviar resumen al contador'}
+          </Button>
+        </div>
+      </div>
+
+      {feedback && <p className="mt-4 text-sm text-muted-foreground">{feedback}</p>}
     </div>
   )
 }

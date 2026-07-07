@@ -6,6 +6,7 @@ import pdfmake from 'pdfmake'
 import vfsFonts from 'pdfmake/build/vfs_fonts'
 import log from 'electron-log'
 import { decryptIfSensitive } from './configuracion.js'
+import { lunesEnMes, montoMes } from '../lib/montos.js'
 
 const MESES = [
   'Enero',
@@ -26,6 +27,13 @@ const TIPO_LABEL = {
   paciente: 'Paciente',
   alumno: 'Alumno grupal',
   alumno_particular: 'Alumno particular'
+}
+
+const FRECUENCIA_LABEL = {
+  mensual: 'Mensual',
+  quincenal: 'Quincenal',
+  semanal: 'Semanal',
+  varias: 'Varias'
 }
 
 // pdfmake en Node es un singleton — fonts y vfs se configuran una vez al importar.
@@ -208,6 +216,97 @@ function buildPdfDoc(rows, info) {
   }
 }
 
+function buildPadronInfo(params) {
+  const anio = Number(params.anio)
+  const mes = Number(params.mes)
+  const label = `${MESES[mes - 1]} ${anio}`
+  const filename = `resumen-clientes-${anio}-${pad2(mes)}.pdf`
+  return { label, filename }
+}
+
+function buildPadronPdfDoc(rows, info) {
+  const tableHeader = [
+    { text: 'Nombre y Apellido', bold: true },
+    { text: 'DNI', bold: true },
+    { text: 'Tipo', bold: true },
+    { text: 'Frecuencia', bold: true },
+    { text: 'Monto mensual', bold: true, alignment: 'right' }
+  ]
+
+  const subtotales = { paciente: 0, alumno: 0, alumno_particular: 0 }
+  let totalGeneral = 0
+  for (const r of rows) {
+    if (subtotales[r.rol_tipo] != null) {
+      subtotales[r.rol_tipo] += Number(r.monto) || 0
+    }
+    totalGeneral += Number(r.monto) || 0
+  }
+
+  const tableBody = [
+    tableHeader,
+    ...rows.map((r) => [
+      personaLabel(r),
+      r.dni ?? '—',
+      TIPO_LABEL[r.rol_tipo] ?? '—',
+      FRECUENCIA_LABEL[r.frecuencia] ?? '—',
+      { text: formatMonto(r.monto), alignment: 'right' }
+    ])
+  ]
+
+  const content = [
+    { text: `Resumen de clientes — ${info.label}`, fontSize: 18, bold: true },
+    {
+      text: `Generado el ${fechaGeneradoString()}`,
+      fontSize: 10,
+      color: '#666666',
+      margin: [0, 2, 0, 2]
+    },
+    {
+      text: 'Importe mensual estimado según el precio y la frecuencia vigentes de cada cliente activo, haya pagado o no.',
+      fontSize: 9,
+      italics: true,
+      color: '#666666',
+      margin: [0, 0, 0, 12]
+    }
+  ]
+
+  if (rows.length === 0) {
+    content.push({
+      text: 'No hay clientes activos registrados.',
+      italics: true,
+      margin: [0, 12, 0, 0]
+    })
+  } else {
+    content.push({
+      table: {
+        headerRows: 1,
+        widths: ['*', 'auto', 'auto', 'auto', 'auto'],
+        body: tableBody
+      },
+      layout: 'lightHorizontalLines'
+    })
+    content.push({ text: 'Subtotales', bold: true, margin: [0, 16, 0, 4] })
+    content.push({ text: `Total Pacientes: ${formatMonto(subtotales.paciente)}` })
+    content.push({ text: `Total Alumnos grupales: ${formatMonto(subtotales.alumno)}` })
+    content.push({
+      text: `Total Alumnos particulares: ${formatMonto(subtotales.alumno_particular)}`
+    })
+    content.push({
+      text: `Total mensual esperado: ${formatMonto(totalGeneral)}`,
+      bold: true,
+      fontSize: 13,
+      margin: [0, 12, 0, 0]
+    })
+  }
+
+  return {
+    pageSize: 'A4',
+    pageMargins: [40, 40, 40, 40],
+    defaultStyle: { font: 'Roboto', fontSize: 10 },
+    content
+  }
+}
+
 export function registerReportesHandlers(db) {
   const listMensualStmt = db.prepare(`
     SELECT
@@ -285,6 +384,36 @@ export function registerReportesHandlers(db) {
     ORDER BY pe.apellido ASC, pe.nombre ASC
   `)
 
+  const listPacientesClientesStmt = db.prepare(`
+    SELECT pe.nombre, pe.apellido, pe.dni, p.precio_base, p.frecuencia_pago
+    FROM pacientes p
+    JOIN personas pe ON pe.id = p.persona_id
+    WHERE p.activo = 1
+  `)
+
+  const listAlumnosGruposClientesStmt = db.prepare(`
+    SELECT
+      a.id              AS alumno_id,
+      pe.nombre,
+      pe.apellido,
+      pe.dni,
+      g.precio_base     AS grupo_precio_base,
+      g.frecuencia_pago AS grupo_frecuencia_pago,
+      ag.precio_override
+    FROM alumnos a
+    JOIN personas pe ON pe.id = a.persona_id
+    JOIN alumno_grupo ag ON ag.alumno_id = a.id AND ag.egreso_en IS NULL
+    JOIN grupos g ON g.id = ag.grupo_id AND g.activo = 1
+    WHERE a.activo = 1
+  `)
+
+  const listAlumnosParticularesClientesStmt = db.prepare(`
+    SELECT pe.nombre, pe.apellido, pe.dni, ap.precio_base, ap.frecuencia_pago
+    FROM alumnos_particulares ap
+    JOIN personas pe ON pe.id = ap.persona_id
+    WHERE ap.activo = 1
+  `)
+
   const smtpKeysStmt = db.prepare(
     "SELECT clave, valor FROM configuracion WHERE clave IN ('smtp_host','smtp_port','smtp_user','smtp_pass','mail_contador')"
   )
@@ -332,6 +461,85 @@ export function registerReportesHandlers(db) {
     return { buffer, info }
   }
 
+  function consultarClientes(params) {
+    const anio = Number(params.anio)
+    const mes = Number(params.mes)
+    const lunes = lunesEnMes(anio, mes)
+    const rows = []
+
+    for (const r of listPacientesClientesStmt.all()) {
+      rows.push({
+        nombre: r.nombre,
+        apellido: r.apellido,
+        dni: r.dni,
+        rol_tipo: 'paciente',
+        frecuencia: r.frecuencia_pago,
+        monto: montoMes(r.precio_base, r.frecuencia_pago, lunes)
+      })
+    }
+
+    // Un alumno puede estar en varios grupos: agrupamos en una sola fila por alumno,
+    // sumando los montos y marcando "varias" si las frecuencias difieren.
+    const alumnosMap = new Map()
+    for (const r of listAlumnosGruposClientesStmt.all()) {
+      let a = alumnosMap.get(r.alumno_id)
+      if (!a) {
+        a = {
+          nombre: r.nombre,
+          apellido: r.apellido,
+          dni: r.dni,
+          frecuencias: new Set(),
+          monto: 0
+        }
+        alumnosMap.set(r.alumno_id, a)
+      }
+      const precio = r.precio_override ?? r.grupo_precio_base
+      a.monto += montoMes(precio, r.grupo_frecuencia_pago, lunes)
+      a.frecuencias.add(r.grupo_frecuencia_pago)
+    }
+    for (const a of alumnosMap.values()) {
+      rows.push({
+        nombre: a.nombre,
+        apellido: a.apellido,
+        dni: a.dni,
+        rol_tipo: 'alumno',
+        frecuencia: a.frecuencias.size === 1 ? [...a.frecuencias][0] : 'varias',
+        monto: a.monto
+      })
+    }
+
+    for (const r of listAlumnosParticularesClientesStmt.all()) {
+      rows.push({
+        nombre: r.nombre,
+        apellido: r.apellido,
+        dni: r.dni,
+        rol_tipo: 'alumno_particular',
+        frecuencia: r.frecuencia_pago,
+        monto: montoMes(r.precio_base, r.frecuencia_pago, lunes)
+      })
+    }
+
+    rows.sort((a, b) => {
+      const ap = (a.apellido ?? '').localeCompare(b.apellido ?? '', 'es')
+      if (ap !== 0) return ap
+      return (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es')
+    })
+    return rows
+  }
+
+  async function generarPadronBuffer(params) {
+    const rows = consultarClientes(params)
+    const info = buildPadronInfo(params)
+    const docDefinition = buildPadronPdfDoc(rows, info)
+    const pdf = pdfmake.createPdf(docDefinition)
+    const buffer = await pdf.getBuffer()
+    return { buffer, info }
+  }
+
+  const esPadron = (params) => params?.tipoReporte === 'clientes'
+  const generarBuffer = (params) =>
+    esPadron(params) ? generarPadronBuffer(params) : generarPdfBuffer(params)
+
   function leerConfigSMTP() {
     const rows = smtpKeysStmt.all()
     const map = new Map(rows.map((r) => [r.clave, r.valor ?? '']))
@@ -350,7 +558,7 @@ export function registerReportesHandlers(db) {
 
     let buffer, info
     try {
-      ;({ buffer, info } = await generarPdfBuffer(params))
+      ;({ buffer, info } = await generarBuffer(params))
     } catch (err) {
       return { ok: false, error: { code: 'PDF_FAILED', message: err.message } }
     }
@@ -397,10 +605,17 @@ export function registerReportesHandlers(db) {
 
     let buffer, info
     try {
-      ;({ buffer, info } = await generarPdfBuffer(params))
+      ;({ buffer, info } = await generarBuffer(params))
     } catch (err) {
       return { ok: false, error: { code: 'PDF_FAILED', message: err.message } }
     }
+
+    const asunto = esPadron(params)
+      ? `Resumen de clientes — ${info.label}`
+      : `Reporte de pagos — ${info.label}`
+    const cuerpo = esPadron(params)
+      ? `Adjunto el resumen de clientes con el importe mensual del período ${info.label}.`
+      : `Adjunto el reporte de pagos del período ${info.label}.`
 
     const portNum = Number(cfg.port)
     const transporter = nodemailer.createTransport({
@@ -417,8 +632,8 @@ export function registerReportesHandlers(db) {
       await transporter.sendMail({
         from: cfg.user,
         to: cfg.contador,
-        subject: `Reporte de pagos — ${info.label}`,
-        text: `Adjunto el reporte de pagos del período ${info.label}.`,
+        subject: asunto,
+        text: cuerpo,
         attachments: [{ filename: info.filename, content: buffer }]
       })
       return { ok: true, data: null }
