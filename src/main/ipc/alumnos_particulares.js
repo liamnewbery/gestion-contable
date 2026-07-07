@@ -58,9 +58,11 @@ export function registerAlumnosParticularesHandlers(db) {
 
   const checkExistsStmt = db.prepare('SELECT id FROM alumnos_particulares WHERE id = ?')
 
-  const deactivateStmt = db.prepare(
-    'UPDATE alumnos_particulares SET activo = 0 WHERE id = ?'
-  )
+  const deactivateStmt = db.prepare('UPDATE alumnos_particulares SET activo = 0 WHERE id = ?')
+
+  const reactivateStmt = db.prepare('UPDATE alumnos_particulares SET activo = 1 WHERE id = ?')
+
+  const getPersonaStmt = db.prepare('SELECT persona_id FROM alumnos_particulares WHERE id = ?')
 
   const getFullStmt = db.prepare(`
     SELECT
@@ -210,22 +212,44 @@ export function registerAlumnosParticularesHandlers(db) {
     }
   })
 
-  ipcMain.handle(
-    'alumnos_particulares:deactivate',
-    (_e, { alumno_particular_id }) => {
-      try {
-        const exists = checkExistsStmt.get(alumno_particular_id)
-        if (!exists) {
-          return {
-            ok: false,
-            error: { code: 'NOT_FOUND', message: 'Alumno particular no encontrado.' }
+  ipcMain.handle('alumnos_particulares:deactivate', (_e, { alumno_particular_id }) => {
+    try {
+      const exists = checkExistsStmt.get(alumno_particular_id)
+      if (!exists) {
+        return {
+          ok: false,
+          error: { code: 'NOT_FOUND', message: 'Alumno particular no encontrado.' }
+        }
+      }
+      deactivateStmt.run(alumno_particular_id)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: { code: 'DEACTIVATE_FAILED', message: err.message } }
+    }
+  })
+
+  ipcMain.handle('alumnos_particulares:reactivate', (_e, { alumno_particular_id }) => {
+    try {
+      const row = getPersonaStmt.get(alumno_particular_id)
+      if (!row) {
+        return {
+          ok: false,
+          error: { code: 'NOT_FOUND', message: 'Alumno particular no encontrado.' }
+        }
+      }
+      if (findActiveByPersonaStmt.get(row.persona_id)) {
+        return {
+          ok: false,
+          error: {
+            code: 'ALUMNO_PARTICULAR_YA_EXISTE',
+            message: 'Esta persona ya tiene un alumno particular activo.'
           }
         }
-        deactivateStmt.run(alumno_particular_id)
-        return { ok: true }
-      } catch (err) {
-        return { ok: false, error: { code: 'DEACTIVATE_FAILED', message: err.message } }
       }
+      reactivateStmt.run(alumno_particular_id)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: { code: 'REACTIVATE_FAILED', message: err.message } }
     }
-  )
+  })
 }

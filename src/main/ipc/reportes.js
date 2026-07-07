@@ -29,11 +29,11 @@ const TIPO_LABEL = {
   alumno_particular: 'Alumno particular'
 }
 
-const FRECUENCIA_LABEL = {
-  mensual: 'Mensual',
-  quincenal: 'Quincenal',
-  semanal: 'Semanal',
-  varias: 'Varias'
+// En el resumen de clientes no se distingue grupal de particular: ambos son "Alumno".
+const TIPO_RESUMEN_LABEL = {
+  paciente: 'Paciente',
+  alumno: 'Alumno',
+  alumno_particular: 'Alumno'
 }
 
 // pdfmake en Node es un singleton — fonts y vfs se configuran una vez al importar.
@@ -229,16 +229,15 @@ function buildPadronPdfDoc(rows, info) {
     { text: 'Nombre y Apellido', bold: true },
     { text: 'DNI', bold: true },
     { text: 'Tipo', bold: true },
-    { text: 'Frecuencia', bold: true },
     { text: 'Monto mensual', bold: true, alignment: 'right' }
   ]
 
-  const subtotales = { paciente: 0, alumno: 0, alumno_particular: 0 }
+  // pacientes por un lado; alumnos grupales y particulares se suman juntos.
+  const subtotales = { paciente: 0, alumno: 0 }
   let totalGeneral = 0
   for (const r of rows) {
-    if (subtotales[r.rol_tipo] != null) {
-      subtotales[r.rol_tipo] += Number(r.monto) || 0
-    }
+    if (r.rol_tipo === 'paciente') subtotales.paciente += Number(r.monto) || 0
+    else subtotales.alumno += Number(r.monto) || 0
     totalGeneral += Number(r.monto) || 0
   }
 
@@ -247,8 +246,7 @@ function buildPadronPdfDoc(rows, info) {
     ...rows.map((r) => [
       personaLabel(r),
       r.dni ?? '—',
-      TIPO_LABEL[r.rol_tipo] ?? '—',
-      FRECUENCIA_LABEL[r.frecuencia] ?? '—',
+      TIPO_RESUMEN_LABEL[r.rol_tipo] ?? '—',
       { text: formatMonto(r.monto), alignment: 'right' }
     ])
   ]
@@ -280,19 +278,16 @@ function buildPadronPdfDoc(rows, info) {
     content.push({
       table: {
         headerRows: 1,
-        widths: ['*', 'auto', 'auto', 'auto', 'auto'],
+        widths: ['*', 'auto', 'auto', 'auto'],
         body: tableBody
       },
       layout: 'lightHorizontalLines'
     })
     content.push({ text: 'Subtotales', bold: true, margin: [0, 16, 0, 4] })
     content.push({ text: `Total Pacientes: ${formatMonto(subtotales.paciente)}` })
-    content.push({ text: `Total Alumnos grupales: ${formatMonto(subtotales.alumno)}` })
+    content.push({ text: `Total Alumnos: ${formatMonto(subtotales.alumno)}` })
     content.push({
-      text: `Total Alumnos particulares: ${formatMonto(subtotales.alumno_particular)}`
-    })
-    content.push({
-      text: `Total mensual esperado: ${formatMonto(totalGeneral)}`,
+      text: `Total Mensual: ${formatMonto(totalGeneral)}`,
       bold: true,
       fontSize: 13,
       margin: [0, 12, 0, 0]
@@ -477,30 +472,22 @@ export function registerReportesHandlers(db) {
         apellido: r.apellido,
         dni: r.dni,
         rol_tipo: 'paciente',
-        frecuencia: r.frecuencia_pago,
         monto: montoMes(r.precio_base, r.frecuencia_pago, lunes)
       })
     }
 
-    // Un alumno puede estar en varios grupos: agrupamos en una sola fila por alumno,
-    // sumando los montos y marcando "varias" si las frecuencias difieren.
+    // Un alumno puede estar en varios grupos: se agrupa en una sola fila por alumno
+    // sumando los montos.
     const alumnosMap = new Map()
     for (const r of listAlumnosGruposClientesStmt.all()) {
       if (!incluirEfectivo && r.grupo_modalidad === 'presencial') continue
       let a = alumnosMap.get(r.alumno_id)
       if (!a) {
-        a = {
-          nombre: r.nombre,
-          apellido: r.apellido,
-          dni: r.dni,
-          frecuencias: new Set(),
-          monto: 0
-        }
+        a = { nombre: r.nombre, apellido: r.apellido, dni: r.dni, monto: 0 }
         alumnosMap.set(r.alumno_id, a)
       }
       const precio = r.precio_override ?? r.grupo_precio_base
       a.monto += montoMes(precio, r.grupo_frecuencia_pago, lunes)
-      a.frecuencias.add(r.grupo_frecuencia_pago)
     }
     for (const a of alumnosMap.values()) {
       rows.push({
@@ -508,7 +495,6 @@ export function registerReportesHandlers(db) {
         apellido: a.apellido,
         dni: a.dni,
         rol_tipo: 'alumno',
-        frecuencia: a.frecuencias.size === 1 ? [...a.frecuencias][0] : 'varias',
         monto: a.monto
       })
     }
@@ -519,7 +505,6 @@ export function registerReportesHandlers(db) {
         apellido: r.apellido,
         dni: r.dni,
         rol_tipo: 'alumno_particular',
-        frecuencia: r.frecuencia_pago,
         monto: montoMes(r.precio_base, r.frecuencia_pago, lunes)
       })
     }

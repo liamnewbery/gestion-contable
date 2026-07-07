@@ -15,14 +15,16 @@ const api = {
     listInactivos: () => ipcRenderer.invoke('pacientes:list-inactivos'),
     create: (data) => ipcRenderer.invoke('pacientes:create', data),
     update: (data) => ipcRenderer.invoke('pacientes:update', data),
-    deactivate: (id) => ipcRenderer.invoke('pacientes:deactivate', { paciente_id: id })
+    deactivate: (id) => ipcRenderer.invoke('pacientes:deactivate', { paciente_id: id }),
+    reactivate: (id) => ipcRenderer.invoke('pacientes:reactivate', { paciente_id: id })
   },
   alumnos: {
     list: () => ipcRenderer.invoke('alumnos:list'),
     listInactivos: () => ipcRenderer.invoke('alumnos:list-inactivos'),
     create: (data) => ipcRenderer.invoke('alumnos:create', data),
     update: (data) => ipcRenderer.invoke('alumnos:update', data),
-    deactivate: (id) => ipcRenderer.invoke('alumnos:deactivate', { alumno_id: id })
+    deactivate: (id) => ipcRenderer.invoke('alumnos:deactivate', { alumno_id: id }),
+    reactivate: (id) => ipcRenderer.invoke('alumnos:reactivate', { alumno_id: id })
   },
   alumnos_particulares: {
     list: () => ipcRenderer.invoke('alumnos_particulares:list'),
@@ -30,7 +32,9 @@ const api = {
     create: (data) => ipcRenderer.invoke('alumnos_particulares:create', data),
     update: (data) => ipcRenderer.invoke('alumnos_particulares:update', data),
     deactivate: (id) =>
-      ipcRenderer.invoke('alumnos_particulares:deactivate', { alumno_particular_id: id })
+      ipcRenderer.invoke('alumnos_particulares:deactivate', { alumno_particular_id: id }),
+    reactivate: (id) =>
+      ipcRenderer.invoke('alumnos_particulares:reactivate', { alumno_particular_id: id })
   },
   dashboard: {
     resumen: (anio, mes) => ipcRenderer.invoke('dashboard:resumen', { anio, mes })

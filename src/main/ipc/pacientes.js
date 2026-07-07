@@ -54,6 +54,10 @@ export function registerPacientesHandlers(db) {
 
   const deactivatePacienteStmt = db.prepare('UPDATE pacientes SET activo = 0 WHERE id = ?')
 
+  const reactivatePacienteStmt = db.prepare('UPDATE pacientes SET activo = 1 WHERE id = ?')
+
+  const getPacientePersonaStmt = db.prepare('SELECT persona_id FROM pacientes WHERE id = ?')
+
   const getPacienteFullStmt = db.prepare(`
     SELECT
       p.id              AS paciente_id,
@@ -198,6 +202,28 @@ export function registerPacientesHandlers(db) {
       return { ok: true }
     } catch (err) {
       return { ok: false, error: { code: 'DEACTIVATE_FAILED', message: err.message } }
+    }
+  })
+
+  ipcMain.handle('pacientes:reactivate', (_e, { paciente_id }) => {
+    try {
+      const row = getPacientePersonaStmt.get(paciente_id)
+      if (!row) {
+        return { ok: false, error: { code: 'NOT_FOUND', message: 'Paciente no encontrado.' } }
+      }
+      if (findActivePacienteByPersonaStmt.get(row.persona_id)) {
+        return {
+          ok: false,
+          error: {
+            code: 'PACIENTE_YA_EXISTE',
+            message: 'Esta persona ya tiene un paciente activo.'
+          }
+        }
+      }
+      reactivatePacienteStmt.run(paciente_id)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: { code: 'REACTIVATE_FAILED', message: err.message } }
     }
   })
 }

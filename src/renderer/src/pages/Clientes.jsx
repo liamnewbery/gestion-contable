@@ -168,6 +168,7 @@ function buildClientes(pacientes, alumnos, alumnosParticulares) {
 function Clientes() {
   const [vista, setVista] = useState('activos')
   const [filtro, setFiltro] = useState('todos')
+  const [busqueda, setBusqueda] = useState('')
   const [pacientes, setPacientes] = useState([])
   const [alumnos, setAlumnos] = useState([])
   const [alumnosParticulares, setAlumnosParticulares] = useState([])
@@ -182,6 +183,7 @@ function Clientes() {
 
   const [confirmTarget, setConfirmTarget] = useState(null)
   const [deactivating, setDeactivating] = useState(false)
+  const [reactivating, setReactivating] = useState(false)
 
   async function loadAll(targetVista) {
     setLoading(true)
@@ -191,9 +193,7 @@ function Clientes() {
         targetVista === 'activos'
           ? window.api.pacientes.list()
           : window.api.pacientes.listInactivos(),
-        targetVista === 'activos'
-          ? window.api.alumnos.list()
-          : window.api.alumnos.listInactivos(),
+        targetVista === 'activos' ? window.api.alumnos.list() : window.api.alumnos.listInactivos(),
         targetVista === 'activos'
           ? window.api.alumnos_particulares.list()
           : window.api.alumnos_particulares.listInactivos(),
@@ -227,26 +227,35 @@ function Clientes() {
   )
 
   const filtered = useMemo(() => {
+    let base
     switch (filtro) {
       case 'pacientes':
-        return clientes.filter((c) => c.paciente)
+        base = clientes.filter((c) => c.paciente)
+        break
       case 'alumnos':
-        return clientes.filter((c) => c.alumno || c.alumnoParticular)
+        base = clientes.filter((c) => c.alumno || c.alumnoParticular)
+        break
       case 'ambos':
-        return clientes.filter(
-          (c) => c.paciente && (c.alumno || c.alumnoParticular)
-        )
+        base = clientes.filter((c) => c.paciente && (c.alumno || c.alumnoParticular))
+        break
       case 'especial':
-        return clientes.filter(
+        base = clientes.filter(
           (c) =>
             (c.paciente && c.paciente.precio_es_especial) ||
             (c.alumnoParticular && c.alumnoParticular.precio_es_especial) ||
             c.grupos.some((g) => g.precio_grupo_es_especial)
         )
+        break
       default:
-        return clientes
+        base = clientes
     }
-  }, [clientes, filtro])
+    const q = busqueda.trim().toLowerCase()
+    if (!q) return base
+    return base.filter((c) => {
+      const hay = `${c.nombre} ${c.apellido} ${c.dni ?? ''} ${c.email ?? ''}`.toLowerCase()
+      return hay.includes(q)
+    })
+  }, [clientes, filtro, busqueda])
 
   function openCreate() {
     setFormData(initialFormData)
@@ -464,9 +473,7 @@ function Clientes() {
           }
         }
         if (wasAlumnoParticular && !formData.esAlumnoParticular) {
-          const res = await window.api.alumnos_particulares.deactivate(
-            editing.alumno_particular_id
-          )
+          const res = await window.api.alumnos_particulares.deactivate(editing.alumno_particular_id)
           if (!res.ok) {
             setFormError(res.error.message)
             return
@@ -544,9 +551,7 @@ function Clientes() {
       } else if (confirmTarget.role === 'alumno') {
         res = await window.api.alumnos.deactivate(confirmTarget.alumno_id)
       } else {
-        res = await window.api.alumnos_particulares.deactivate(
-          confirmTarget.alumno_particular_id
-        )
+        res = await window.api.alumnos_particulares.deactivate(confirmTarget.alumno_particular_id)
       }
       if (!res.ok) {
         setPageError(res.error.message)
@@ -563,6 +568,32 @@ function Clientes() {
     }
   }
 
+  async function handleReactivate(client, role) {
+    setReactivating(true)
+    setPageError(null)
+    try {
+      let res
+      if (role === 'paciente') {
+        res = await window.api.pacientes.reactivate(client.paciente.paciente_id)
+      } else if (role === 'alumno') {
+        res = await window.api.alumnos.reactivate(client.alumno.alumno_id)
+      } else {
+        res = await window.api.alumnos_particulares.reactivate(
+          client.alumnoParticular.alumno_particular_id
+        )
+      }
+      if (!res.ok) {
+        setPageError(res.error.message)
+        return
+      }
+      await loadAll(vista)
+    } catch (err) {
+      setPageError(err.message)
+    } finally {
+      setReactivating(false)
+    }
+  }
+
   function toggleGrupo(grupo) {
     const current = formData.alumno.grupos
     const idx = current.findIndex((g) => g.grupo_id === grupo.id)
@@ -570,10 +601,7 @@ function Clientes() {
     if (idx >= 0) {
       next = [...current.slice(0, idx), ...current.slice(idx + 1)]
     } else {
-      next = [
-        ...current,
-        { grupo_id: grupo.id, precio_override: '', precio_es_especial: false }
-      ]
+      next = [...current, { grupo_id: grupo.id, precio_override: '', precio_es_especial: false }]
     }
     setFormData({ ...formData, alumno: { ...formData.alumno, grupos: next } })
   }
@@ -605,10 +633,7 @@ function Clientes() {
           {vista === 'activos' ? 'Clientes' : 'Clientes inactivos'}
         </h1>
         {vista === 'activos' ? (
-          <Button
-            onClick={openCreate}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
+          <Button onClick={openCreate} className="bg-green-600 hover:bg-green-700 text-white">
             + Añadir cliente
           </Button>
         ) : (
@@ -637,6 +662,16 @@ function Clientes() {
         </div>
       )}
 
+      <div className="mb-4 max-w-sm">
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre, apellido, DNI o email…"
+          className={fieldClass}
+        />
+      </div>
+
       {pageError && (
         <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {pageError}
@@ -656,6 +691,8 @@ function Clientes() {
               vista={vista}
               onEdit={() => openEdit(c)}
               onDeactivate={(role) => openDeactivate(c, role)}
+              onReactivate={(role) => handleReactivate(c, role)}
+              reactivating={reactivating}
             />
           ))}
         </ul>
@@ -762,7 +799,7 @@ function RoleBadge({ children, variant = 'default' }) {
   )
 }
 
-function ClientCard({ client, vista, onEdit, onDeactivate }) {
+function ClientCard({ client, vista, onEdit, onDeactivate, onReactivate, reactivating }) {
   const activeRoles = []
   if (client.paciente) activeRoles.push({ key: 'paciente', label: 'paciente' })
   if (client.alumno) activeRoles.push({ key: 'alumno', label: 'alumno' })
@@ -783,12 +820,14 @@ function ClientCard({ client, vista, onEdit, onDeactivate }) {
               {client.email || ''}
             </div>
           )}
-          <div
-            className={`mt-2 flex gap-2 ${stackBadges ? 'flex-col items-start' : 'flex-wrap'}`}
-          >
+          <div className={`mt-2 flex gap-2 ${stackBadges ? 'flex-col items-start' : 'flex-wrap'}`}>
             {client.paciente && (
               <RoleBadge variant="paciente">
-                Paciente · {formatPrecioFrecuencia(client.paciente.precio_base, client.paciente.frecuencia_pago)}
+                Paciente ·{' '}
+                {formatPrecioFrecuencia(
+                  client.paciente.precio_base,
+                  client.paciente.frecuencia_pago
+                )}
                 {client.paciente.precio_es_especial && ' · precio especial'}
               </RoleBadge>
             )}
@@ -847,6 +886,34 @@ function ClientCard({ client, vista, onEdit, onDeactivate }) {
             )}
           </div>
         )}
+        {vista === 'inactivos' && (
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {activeRoles.length === 1 ? (
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => onReactivate(activeRoles[0].key)}
+                disabled={reactivating}
+              >
+                Dar de alta
+              </Button>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {activeRoles.map((r) => (
+                  <Button
+                    key={r.key}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => onReactivate(r.key)}
+                    disabled={reactivating}
+                  >
+                    Dar de alta como {r.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </li>
   )
@@ -871,17 +938,14 @@ function ClientForm({
   if (isEditing) {
     if (formData.editing.paciente_id !== null) existingRoles.push('paciente')
     if (formData.editing.alumno_id !== null) existingRoles.push('alumno')
-    if (formData.editing.alumno_particular_id !== null)
-      existingRoles.push('alumno particular')
+    if (formData.editing.alumno_particular_id !== null) existingRoles.push('alumno particular')
   }
   const hasMultipleRoles = existingRoles.length >= 2
   const existingRolesLabel = existingRoles.join(', ')
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
-      <h2 className="text-xl font-semibold">
-        {isEditing ? 'Editar cliente' : 'Nuevo cliente'}
-      </h2>
+      <h2 className="text-xl font-semibold">{isEditing ? 'Editar cliente' : 'Nuevo cliente'}</h2>
 
       {/* Persona */}
       <section className="space-y-3">
@@ -926,8 +990,8 @@ function ClientForm({
         </div>
         {hasMultipleRoles && (
           <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
-            Esta persona tiene múltiples roles ({existingRolesLabel}). Los datos personales
-            se actualizan en todos.
+            Esta persona tiene múltiples roles ({existingRolesLabel}). Los datos personales se
+            actualizan en todos.
           </div>
         )}
       </section>
@@ -1009,15 +1073,11 @@ function ClientForm({
             <div>
               <div className="mb-2 text-sm font-medium">Grupos</div>
               {grupos.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No hay grupos activos.
-                </p>
+                <p className="text-sm text-muted-foreground">No hay grupos activos.</p>
               ) : (
                 <div className="space-y-2">
                   {grupos.map((g) => {
-                    const selected = formData.alumno.grupos.find(
-                      (sg) => sg.grupo_id === g.id
-                    )
+                    const selected = formData.alumno.grupos.find((sg) => sg.grupo_id === g.id)
                     return (
                       <div key={g.id} className="rounded-md border p-3">
                         <label className="flex items-center gap-2 text-sm">
@@ -1038,11 +1098,7 @@ function ClientForm({
                                 type="checkbox"
                                 checked={selected.precio_es_especial}
                                 onChange={(e) =>
-                                  onUpdateGrupoField(
-                                    g.id,
-                                    'precio_es_especial',
-                                    e.target.checked
-                                  )
+                                  onUpdateGrupoField(g.id, 'precio_es_especial', e.target.checked)
                                 }
                               />
                               Precio especial
@@ -1056,11 +1112,7 @@ function ClientForm({
                                   className={fieldClass}
                                   value={selected.precio_override}
                                   onChange={(e) =>
-                                    onUpdateGrupoField(
-                                      g.id,
-                                      'precio_override',
-                                      e.target.value
-                                    )
+                                    onUpdateGrupoField(g.id, 'precio_override', e.target.value)
                                   }
                                 />
                               </Field>
@@ -1083,9 +1135,7 @@ function ClientForm({
           <input
             type="checkbox"
             checked={formData.esAlumnoParticular}
-            onChange={(e) =>
-              setFormData({ ...formData, esAlumnoParticular: e.target.checked })
-            }
+            onChange={(e) => setFormData({ ...formData, esAlumnoParticular: e.target.checked })}
           />
           <span className="text-sm font-medium">Es alumno particular</span>
         </label>
@@ -1172,9 +1222,7 @@ function ClientForm({
       </section>
 
       {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </div>
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
       )}
 
       <div className="flex justify-end gap-2 pt-2">

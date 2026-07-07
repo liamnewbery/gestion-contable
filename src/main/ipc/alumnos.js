@@ -33,9 +33,7 @@ export function registerAlumnosHandlers(db) {
     WHERE id = @id
   `)
 
-  const insertAlumnoStmt = db.prepare(
-    'INSERT INTO alumnos (persona_id) VALUES (@persona_id)'
-  )
+  const insertAlumnoStmt = db.prepare('INSERT INTO alumnos (persona_id) VALUES (@persona_id)')
 
   const findActiveAlumnoByPersonaStmt = db.prepare(
     'SELECT id FROM alumnos WHERE persona_id = ? AND activo = 1'
@@ -44,6 +42,10 @@ export function registerAlumnosHandlers(db) {
   const checkAlumnoExistsStmt = db.prepare('SELECT id FROM alumnos WHERE id = ?')
 
   const deactivateAlumnoStmt = db.prepare('UPDATE alumnos SET activo = 0 WHERE id = ?')
+
+  const reactivateAlumnoStmt = db.prepare('UPDATE alumnos SET activo = 1 WHERE id = ?')
+
+  const getAlumnoPersonaStmt = db.prepare('SELECT persona_id FROM alumnos WHERE id = ?')
 
   const insertMembershipStmt = db.prepare(`
     INSERT INTO alumno_grupo (alumno_id, grupo_id, precio_override, precio_es_especial)
@@ -248,6 +250,28 @@ export function registerAlumnosHandlers(db) {
       return { ok: true }
     } catch (err) {
       return { ok: false, error: { code: 'DEACTIVATE_FAILED', message: err.message } }
+    }
+  })
+
+  ipcMain.handle('alumnos:reactivate', (_e, { alumno_id }) => {
+    try {
+      const row = getAlumnoPersonaStmt.get(alumno_id)
+      if (!row) {
+        return { ok: false, error: { code: 'NOT_FOUND', message: 'Alumno no encontrado.' } }
+      }
+      if (findActiveAlumnoByPersonaStmt.get(row.persona_id)) {
+        return {
+          ok: false,
+          error: {
+            code: 'ALUMNO_YA_EXISTE',
+            message: 'Esta persona ya tiene un alumno activo.'
+          }
+        }
+      }
+      reactivateAlumnoStmt.run(alumno_id)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: { code: 'REACTIVATE_FAILED', message: err.message } }
     }
   })
 }
